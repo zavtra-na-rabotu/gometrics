@@ -58,10 +58,10 @@ func MetricHandler(storage Storage) http.HandlerFunc {
 		}
 
 		// Validate Content-Type
-		if r.Header.Get("Content-Type") != "text/plain" {
-			w.WriteHeader(http.StatusBadRequest)
-			return
-		}
+		//if r.Header.Get("Content-Type") != "text/plain" {
+		//	w.WriteHeader(http.StatusBadRequest)
+		//	return
+		//}
 
 		// Get data from request
 		metricType := MetricType(r.PathValue("type"))
