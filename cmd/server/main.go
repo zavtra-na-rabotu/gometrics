@@ -10,7 +10,7 @@ type MetricType string
 
 const (
 	gauge   MetricType = "gauge"
-	counter            = "counter"
+	counter MetricType = "counter"
 )
 
 type Storage interface {
@@ -95,6 +95,7 @@ func MetricHandler(storage Storage) http.HandlerFunc {
 			}
 		}
 
+		w.Header().Set("Content-Type", "text/plain")
 		w.WriteHeader(http.StatusOK)
 	}
 }
