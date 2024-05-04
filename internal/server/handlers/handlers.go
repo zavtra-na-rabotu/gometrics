@@ -22,7 +22,7 @@ func UpdateMetricHandler(storage storage.Storage) http.HandlerFunc {
 		metricName := r.PathValue("name")
 		metricValue := r.PathValue("value")
 
-		// Validate metricType TODO: (Move to utils pkg)
+		// Validate metricType
 		if !(metricType == internal.Counter || metricType == internal.Gauge) {
 			w.WriteHeader(http.StatusBadRequest)
 			return
@@ -53,7 +53,7 @@ func UpdateMetricHandler(storage storage.Storage) http.HandlerFunc {
 			storage.UpdateGauge(metricName, value)
 		}
 
-		w.Header().Set("Content-Type", "text/plain")
+		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		w.WriteHeader(http.StatusOK)
 	}
 }
