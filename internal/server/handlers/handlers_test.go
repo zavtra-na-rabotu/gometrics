@@ -3,6 +3,7 @@ package handlers
 import (
 	"fmt"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/zavtra-na-rabotu/gometrics/internal/server/storage"
 	"net/http"
 	"net/http/httptest"
@@ -81,6 +82,8 @@ func TestUpdateMetricHandler(t *testing.T) {
 			handler(responseRecorder, request)
 
 			result := responseRecorder.Result()
+			err := result.Body.Close()
+			require.NoError(t, err)
 
 			assert.Equal(t, test.want.statusCode, result.StatusCode)
 			assert.Equal(t, test.want.contentType, result.Header.Get("Content-Type"))
