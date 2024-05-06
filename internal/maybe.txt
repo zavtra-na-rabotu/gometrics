@@ -1,0 +1,64 @@
+type MetricI interface {
+	Name() string
+	Type() internal.MetricType
+}
+
+type GaugeMetricI interface {
+	MetricI
+	Set(value float64)
+}
+
+type CounterMetricI interface {
+	MetricI
+	Add(value int64)
+}
+
+type GaugeMetric struct {
+	metricName string
+	metricType internal.MetricType
+	value      float64
+}
+
+func (g *GaugeMetric) Name() string {
+	return g.metricName
+}
+
+func (g *GaugeMetric) Type() internal.MetricType {
+	return g.metricType
+}
+
+func (g *GaugeMetric) Set(value float64) {
+	g.value = value
+}
+
+type CounterMetric struct {
+	metricName string
+	metricType internal.MetricType
+	value      int64
+}
+
+func (g *CounterMetric) Name() string {
+	return g.metricName
+}
+
+func (g *CounterMetric) Type() internal.MetricType {
+	return g.metricType
+}
+
+func (g *CounterMetric) Add(value int64) {
+	g.value = value
+}
+
+var mp = []MetricI{
+	&GaugeMetric{metricType: internal.Gauge, metricName: "Alloc", value: float64(m.Alloc)},
+	&CounterMetric{metricType: internal.Counter, metricName: "PollCount", value: 0},
+}
+
+func main() {
+	for _, metric := range mp {
+		if metric.Type() == internal.Gauge {
+			vla := metric.(GaugeMetricI)
+			vla.Set()
+		}
+	}
+}
