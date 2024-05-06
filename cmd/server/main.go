@@ -2,13 +2,15 @@ package main
 
 import (
 	"github.com/go-chi/chi/v5"
+	"github.com/zavtra-na-rabotu/gometrics/internal"
 	"github.com/zavtra-na-rabotu/gometrics/internal/server/handlers"
 	"github.com/zavtra-na-rabotu/gometrics/internal/server/storage"
-	"log"
 	"net/http"
 )
 
 func main() {
+	Configure()
+
 	memStorage := storage.NewMemStorage()
 	r := chi.NewRouter()
 
@@ -17,7 +19,5 @@ func main() {
 	r.Get("/value/{type}/{name}", handlers.GetMetric(memStorage))
 	r.Get("/", handlers.RenderAllMetrics(memStorage))
 
-	ParseFlags()
-
-	log.Fatal(http.ListenAndServe(serverAddress, r))
+	internal.ErrorLog.Fatal(http.ListenAndServe(serverAddress, r))
 }

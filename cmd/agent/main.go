@@ -7,8 +7,9 @@ import (
 )
 
 func main() {
-	ParseFlags()
+	Configure()
 
+	// FIXME: "http://"...
 	client := resty.New().SetBaseURL("http://" + serverAddress)
 	metricsCollector := metrics.NewCollector()
 	metricsSender := metrics.NewSender(client, metricsCollector)
