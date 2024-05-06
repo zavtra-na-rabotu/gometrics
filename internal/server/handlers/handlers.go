@@ -26,14 +26,14 @@ func GetMetric(st storage.Storage) http.HandlerFunc {
 
 		// Validate MetricType TODO: Remove duplicates
 		if !(metricType == internal.Counter || metricType == internal.Gauge) {
-			internal.ErrorLog.Println("Invalid metric type: %s", metricType)
+			internal.ErrorLog.Printf("Invalid metric type: %s", metricType)
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
 
 		// Validate MetricName TODO: Remove duplicates
 		if stringutils.IsEmpty(metricName) {
-			internal.ErrorLog.Println("Invalid metric name: %s", metricName)
+			internal.ErrorLog.Printf("Invalid metric name: %s", metricName)
 			w.WriteHeader(http.StatusNotFound)
 			return
 		}
@@ -48,7 +48,7 @@ func GetMetric(st storage.Storage) http.HandlerFunc {
 					w.WriteHeader(http.StatusNotFound)
 					return
 				}
-				internal.ErrorLog.Println("Error while getting counter metric: %s", err)
+				internal.ErrorLog.Printf("Error while getting counter metric: %s", err)
 				w.WriteHeader(http.StatusInternalServerError)
 				return
 			}
@@ -60,7 +60,7 @@ func GetMetric(st storage.Storage) http.HandlerFunc {
 					w.WriteHeader(http.StatusNotFound)
 					return
 				}
-				internal.ErrorLog.Println("Error while getting gauge metric: %s", err)
+				internal.ErrorLog.Printf("Error while getting gauge metric: %s", err)
 				w.WriteHeader(http.StatusInternalServerError)
 				return
 			}
@@ -87,14 +87,14 @@ func UpdateMetric(storage storage.Storage) http.HandlerFunc {
 
 		// Validate MetricType TODO: Remove duplicates
 		if !(metricType == internal.Counter || metricType == internal.Gauge) {
-			internal.ErrorLog.Println("Invalid metric type: %s", metricType)
+			internal.ErrorLog.Printf("Invalid metric type: %s", metricType)
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
 
 		// Validate MetricName TODO: Remove duplicates
 		if stringutils.IsEmpty(metricName) {
-			internal.ErrorLog.Println("Invalid metric name: %s", metricName)
+			internal.ErrorLog.Printf("Invalid metric name: %s", metricName)
 			w.WriteHeader(http.StatusNotFound)
 			return
 		}
@@ -103,7 +103,7 @@ func UpdateMetric(storage storage.Storage) http.HandlerFunc {
 		case internal.Counter:
 			value, err := strconv.ParseInt(metricValue, 10, 64)
 			if err != nil {
-				internal.ErrorLog.Println("Failed to parse value from metric '%s': %s\n", metricValue, err)
+				internal.ErrorLog.Printf("Failed to parse value from metric '%s': %s\n", metricValue, err)
 				w.WriteHeader(http.StatusBadRequest)
 				return
 			}
@@ -111,7 +111,7 @@ func UpdateMetric(storage storage.Storage) http.HandlerFunc {
 		case internal.Gauge:
 			value, err := strconv.ParseFloat(metricValue, 64)
 			if err != nil {
-				internal.ErrorLog.Println("Failed to parse value from metric '%s': %s\n", metricValue, err)
+				internal.ErrorLog.Printf("Failed to parse value from metric '%s': %s\n", metricValue, err)
 				w.WriteHeader(http.StatusBadRequest)
 				return
 			}
@@ -128,7 +128,7 @@ func RenderAllMetrics(storage *storage.MemStorage) http.HandlerFunc {
 		wd, _ := os.Getwd()
 		metricsTemplate, err := template.ParseFiles(wd + "/internal/server/web/metrics/metrics.tmpl")
 		if err != nil {
-			internal.ErrorLog.Println("Error while parsing template: %s", err)
+			internal.ErrorLog.Printf("Error while parsing template: %s", err)
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
@@ -154,11 +154,11 @@ func RenderAllMetrics(storage *storage.MemStorage) http.HandlerFunc {
 
 		err = metricsTemplate.Execute(w, allMetrics)
 		if err != nil {
-			internal.ErrorLog.Println("Failed to render all metrics: %s", err)
+			internal.ErrorLog.Printf("Failed to render all metrics: %s", err)
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 
-		w.WriteHeader(http.StatusOK)
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	}
 }
