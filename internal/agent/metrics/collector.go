@@ -17,6 +17,10 @@ func NewCollector() *Collector {
 	}
 }
 
+func (metrics *Collector) ResetPollCounter() {
+	metrics.counterMetrics["PollCount"] = 0
+}
+
 func (metrics *Collector) Collect() {
 	var memStats runtime.MemStats
 	runtime.ReadMemStats(&memStats)

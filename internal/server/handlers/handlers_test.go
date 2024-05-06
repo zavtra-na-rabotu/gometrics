@@ -42,6 +42,19 @@ func TestUpdateMetricHandler(t *testing.T) {
 			},
 		},
 		{
+			name: "Positive scenario. Counter metric (200)",
+			arg:  storage.NewMemStorage(),
+			want: want{
+				contentType: "text/plain; charset=utf-8",
+				statusCode:  http.StatusOK,
+			},
+			request: request{
+				metricType:  "counter",
+				metricName:  "test",
+				metricValue: "28",
+			},
+		},
+		{
 			name: "Negative scenario. No type provided (400)",
 			arg:  storage.NewMemStorage(),
 			want: want{
@@ -78,7 +91,7 @@ func TestUpdateMetricHandler(t *testing.T) {
 			request.SetPathValue("value", test.request.metricValue)
 
 			responseRecorder := httptest.NewRecorder()
-			handler := UpdateMetricHandler(test.arg)
+			handler := UpdateMetric(test.arg)
 			handler(responseRecorder, request)
 
 			result := responseRecorder.Result()

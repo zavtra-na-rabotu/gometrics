@@ -30,6 +30,7 @@ func main() {
 				metricsCollector.Collect()
 			case <-senderTicker.C:
 				metricsSender.Send()
+				metricsCollector.ResetPollCounter()
 			}
 		}
 	}()
