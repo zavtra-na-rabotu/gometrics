@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"errors"
-	"fmt"
 	"github.com/zavtra-na-rabotu/gometrics/internal"
 	"github.com/zavtra-na-rabotu/gometrics/internal/server/storage"
 	"github.com/zavtra-na-rabotu/gometrics/internal/utils/stringutils"
@@ -15,7 +14,7 @@ import (
 type MetricResponse struct {
 	MetricType  internal.MetricType
 	MetricName  string
-	MetricValue any // TODO: Or cast to string ?
+	MetricValue string
 }
 
 // TODO: What to do if variable name and package name are the same ? Only aliases ?
@@ -52,7 +51,7 @@ func GetMetric(st storage.Storage) http.HandlerFunc {
 				w.WriteHeader(http.StatusInternalServerError)
 				return
 			}
-			response = fmt.Sprintf("%d", metric)
+			response = strconv.FormatInt(metric, 10)
 		case internal.Gauge:
 			metric, err := st.GetGauge(metricName)
 			if err != nil {
@@ -64,7 +63,7 @@ func GetMetric(st storage.Storage) http.HandlerFunc {
 				w.WriteHeader(http.StatusInternalServerError)
 				return
 			}
-			response = fmt.Sprintf("%f", metric)
+			response = strconv.FormatFloat(metric, 'f', -1, 64)
 		}
 
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
@@ -74,7 +73,6 @@ func GetMetric(st storage.Storage) http.HandlerFunc {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-		w.WriteHeader(http.StatusOK)
 	}
 }
 
@@ -140,7 +138,7 @@ func RenderAllMetrics(storage *storage.MemStorage) http.HandlerFunc {
 			allMetrics = append(allMetrics, MetricResponse{
 				MetricType:  internal.Gauge,
 				MetricName:  name,
-				MetricValue: metric,
+				MetricValue: strconv.FormatFloat(metric, 'f', -1, 64),
 			})
 		}
 
@@ -148,7 +146,7 @@ func RenderAllMetrics(storage *storage.MemStorage) http.HandlerFunc {
 			allMetrics = append(allMetrics, MetricResponse{
 				MetricType:  internal.Counter,
 				MetricName:  name,
-				MetricValue: metric,
+				MetricValue: strconv.FormatInt(metric, 10),
 			})
 		}
 
