@@ -133,7 +133,6 @@ func RenderAllMetrics(storage *storage.MemStorage) http.HandlerFunc {
 
 		allMetrics := []MetricResponse{}
 
-		//gaugeMetrics := storage.GetAllGauge()
 		for name, metric := range storage.GetAllGauge() {
 			allMetrics = append(allMetrics, MetricResponse{
 				MetricType:  internal.Gauge,

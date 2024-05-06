@@ -6,19 +6,15 @@ import (
 	"time"
 )
 
-const (
-	host            = "http://localhost:8080"
-	collectInterval = 2 * time.Second
-	sendInterval    = 10 * time.Second
-)
-
 func main() {
-	client := resty.New().SetBaseURL(host)
+	ParseFlags()
+
+	client := resty.New().SetBaseURL("http://" + serverAddress)
 	metricsCollector := metrics.NewCollector()
 	metricsSender := metrics.NewSender(client, metricsCollector)
 
-	collectTicker := time.NewTicker(collectInterval)
-	senderTicker := time.NewTicker(sendInterval)
+	collectTicker := time.NewTicker(time.Duration(pollInterval) * time.Second)
+	senderTicker := time.NewTicker(time.Duration(reportInterval) * time.Second)
 
 	defer collectTicker.Stop()
 	defer senderTicker.Stop()
