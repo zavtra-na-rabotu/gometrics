@@ -2,24 +2,28 @@ package main
 
 import (
 	"flag"
-	"os"
+
+	"github.com/caarlos0/env/v11"
+	"github.com/zavtra-na-rabotu/gometrics/internal"
 )
 
 var serverAddress string
 
-func parseFlags() {
-	flag.StringVar(&serverAddress, "a", "localhost:8080", "host and port of server")
-
-	flag.Parse()
-}
-
-func readEnvVariables() {
-	if envServerAddress := os.Getenv("ADDRESS"); envServerAddress != "" {
-		serverAddress = envServerAddress
-	}
+type envs struct {
+	Address string `env:"ADDRESS"`
 }
 
 func Configure() {
-	parseFlags()
-	readEnvVariables()
+	flag.StringVar(&serverAddress, "a", "localhost:8080", "Server URL")
+	flag.Parse()
+
+	cfg := envs{}
+	err := env.Parse(&cfg)
+	if err != nil {
+		internal.ErrorLog.Printf("Failed to parse environment variables: %s", err)
+	}
+
+	if cfg.Address != "" {
+		serverAddress = cfg.Address
+	}
 }

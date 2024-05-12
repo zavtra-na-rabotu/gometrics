@@ -11,4 +11,4 @@ type Storage interface {
 	GetAllCounter() map[string]int64
 }
 
-var ErrorItemNotFound = errors.New("item not found")
+var ErrItemNotFound = errors.New("item not found")

@@ -2,46 +2,45 @@ package main
 
 import (
 	"flag"
+
+	"github.com/caarlos0/env/v11"
 	"github.com/zavtra-na-rabotu/gometrics/internal"
-	"os"
-	"strconv"
 )
 
-var serverAddress string
-var reportInterval int
-var pollInterval int
-
-func parseFlags() {
-	flag.StringVar(&serverAddress, "a", "localhost:8080", "host and port of server")
-	flag.IntVar(&reportInterval, "r", 10, "report interval time in sec")
-	flag.IntVar(&pollInterval, "p", 2, "poll interval time in sec")
-
-	flag.Parse()
+var config struct {
+	serverAddress  string
+	reportInterval int
+	pollInterval   int
 }
 
-func readEnvVariables() {
-	if envServerAddress := os.Getenv("ADDRESS"); envServerAddress != "" {
-		serverAddress = envServerAddress
-	}
-	if envReportInterval := os.Getenv("REPORT_INTERVAL"); envReportInterval != "" {
-		parsedReportInterval, err := strconv.Atoi(envReportInterval)
-		if err != nil {
-			internal.ErrorLog.Printf("failed to parse REPORT_INTERVAL: %s", err)
-		} else {
-			reportInterval = parsedReportInterval
-		}
-	}
-	if envPollInterval := os.Getenv("POLL_INTERVAL"); envPollInterval != "" {
-		parsedPollInterval, err := strconv.Atoi(envPollInterval)
-		if err != nil {
-			internal.ErrorLog.Printf("failed to parse POLL_INTERVAL: %s", err)
-		} else {
-			pollInterval = parsedPollInterval
-		}
-	}
+type envs struct {
+	ServerAddress  string `env:"ADDRESS"`
+	ReportInterval int    `env:"REPORT_INTERVAL"`
+	PollInterval   int    `env:"POLL_INTERVAL"`
 }
 
 func Configure() {
-	parseFlags()
-	readEnvVariables()
+	const defaultReportInterval = 10
+	const defaultPollInterval = 2
+
+	flag.StringVar(&config.serverAddress, "a", "localhost:8080", "Server URL")
+	flag.IntVar(&config.reportInterval, "r", defaultReportInterval, "Report interval in seconds")
+	flag.IntVar(&config.pollInterval, "p", defaultPollInterval, "Poll interval in seconds")
+	flag.Parse()
+
+	envVariables := envs{}
+	err := env.Parse(&envVariables)
+	if err != nil {
+		internal.ErrorLog.Printf("Failed to parse environment variables: %s", err)
+	}
+
+	if envVariables.ServerAddress != "" {
+		config.serverAddress = envVariables.ServerAddress
+	}
+	if envVariables.ReportInterval != 0 {
+		config.reportInterval = envVariables.ReportInterval
+	}
+	if envVariables.PollInterval != 0 {
+		config.pollInterval = envVariables.PollInterval
+	}
 }

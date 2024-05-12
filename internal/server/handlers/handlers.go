@@ -2,29 +2,31 @@ package handlers
 
 import (
 	"errors"
-	"github.com/zavtra-na-rabotu/gometrics/internal"
-	"github.com/zavtra-na-rabotu/gometrics/internal/server/storage"
-	"github.com/zavtra-na-rabotu/gometrics/internal/utils/stringutils"
 	"html/template"
 	"net/http"
 	"os"
 	"strconv"
+
+	"github.com/zavtra-na-rabotu/gometrics/internal"
+	"github.com/zavtra-na-rabotu/gometrics/internal/model"
+	"github.com/zavtra-na-rabotu/gometrics/internal/server/storage"
+	"github.com/zavtra-na-rabotu/gometrics/internal/utils/stringutils"
 )
 
 type MetricResponse struct {
-	MetricType  internal.MetricType
+	MetricType  model.MetricType
 	MetricName  string
 	MetricValue string
 }
 
-// TODO: What to do if variable name and package name are the same ? Only aliases ?
+// GetMetric TODO: What to do if variable name and package name are the same ? Only aliases ?
 func GetMetric(st storage.Storage) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		metricType := internal.MetricType(r.PathValue("type"))
+		metricType := model.MetricType(r.PathValue("type"))
 		metricName := r.PathValue("name")
 
 		// Validate MetricType TODO: Remove duplicates
-		if !(metricType == internal.Counter || metricType == internal.Gauge) {
+		if !(metricType == model.Counter || metricType == model.Gauge) {
 			internal.ErrorLog.Printf("Invalid metric type: %s", metricType)
 			w.WriteHeader(http.StatusBadRequest)
 			return
@@ -40,10 +42,10 @@ func GetMetric(st storage.Storage) http.HandlerFunc {
 		var response string
 
 		switch metricType {
-		case internal.Counter:
+		case model.Counter:
 			metric, err := st.GetCounter(metricName)
 			if err != nil {
-				if errors.Is(err, storage.ErrorItemNotFound) {
+				if errors.Is(err, storage.ErrItemNotFound) {
 					w.WriteHeader(http.StatusNotFound)
 					return
 				}
@@ -52,10 +54,10 @@ func GetMetric(st storage.Storage) http.HandlerFunc {
 				return
 			}
 			response = strconv.FormatInt(metric, 10)
-		case internal.Gauge:
+		case model.Gauge:
 			metric, err := st.GetGauge(metricName)
 			if err != nil {
-				if errors.Is(err, storage.ErrorItemNotFound) {
+				if errors.Is(err, storage.ErrItemNotFound) {
 					w.WriteHeader(http.StatusNotFound)
 					return
 				}
@@ -76,15 +78,15 @@ func GetMetric(st storage.Storage) http.HandlerFunc {
 	}
 }
 
-func UpdateMetric(storage storage.Storage) http.HandlerFunc {
+func UpdateMetric(st storage.Storage) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Get data from request
-		metricType := internal.MetricType(r.PathValue("type"))
+		metricType := model.MetricType(r.PathValue("type"))
 		metricName := r.PathValue("name")
 		metricValue := r.PathValue("value")
 
 		// Validate MetricType TODO: Remove duplicates
-		if !(metricType == internal.Counter || metricType == internal.Gauge) {
+		if !(metricType == model.Counter || metricType == model.Gauge) {
 			internal.ErrorLog.Printf("Invalid metric type: %s", metricType)
 			w.WriteHeader(http.StatusBadRequest)
 			return
@@ -98,22 +100,22 @@ func UpdateMetric(storage storage.Storage) http.HandlerFunc {
 		}
 
 		switch metricType {
-		case internal.Counter:
+		case model.Counter:
 			value, err := strconv.ParseInt(metricValue, 10, 64)
 			if err != nil {
 				internal.ErrorLog.Printf("Failed to parse value from metric '%s': %s\n", metricValue, err)
 				w.WriteHeader(http.StatusBadRequest)
 				return
 			}
-			storage.UpdateCounter(metricName, value)
-		case internal.Gauge:
+			st.UpdateCounter(metricName, value)
+		case model.Gauge:
 			value, err := strconv.ParseFloat(metricValue, 64)
 			if err != nil {
 				internal.ErrorLog.Printf("Failed to parse value from metric '%s': %s\n", metricValue, err)
 				w.WriteHeader(http.StatusBadRequest)
 				return
 			}
-			storage.UpdateGauge(metricName, value)
+			st.UpdateGauge(metricName, value)
 		}
 
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
@@ -121,7 +123,7 @@ func UpdateMetric(storage storage.Storage) http.HandlerFunc {
 	}
 }
 
-func RenderAllMetrics(storage *storage.MemStorage) http.HandlerFunc {
+func RenderAllMetrics(st *storage.MemStorage) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		wd, _ := os.Getwd()
 		metricsTemplate, err := template.ParseFiles(wd + "/internal/server/web/metrics/metrics.tmpl")
@@ -133,17 +135,17 @@ func RenderAllMetrics(storage *storage.MemStorage) http.HandlerFunc {
 
 		allMetrics := []MetricResponse{}
 
-		for name, metric := range storage.GetAllGauge() {
+		for name, metric := range st.GetAllGauge() {
 			allMetrics = append(allMetrics, MetricResponse{
-				MetricType:  internal.Gauge,
+				MetricType:  model.Gauge,
 				MetricName:  name,
 				MetricValue: strconv.FormatFloat(metric, 'f', -1, 64),
 			})
 		}
 
-		for name, metric := range storage.GetAllCounter() {
+		for name, metric := range st.GetAllCounter() {
 			allMetrics = append(allMetrics, MetricResponse{
-				MetricType:  internal.Counter,
+				MetricType:  model.Counter,
 				MetricName:  name,
 				MetricValue: strconv.FormatInt(metric, 10),
 			})

@@ -53,5 +53,5 @@ func (metrics *Collector) Collect() {
 	metrics.gaugeMetrics["Sys"] = float64(memStats.Sys)
 	metrics.gaugeMetrics["TotalAlloc"] = float64(memStats.TotalAlloc)
 	metrics.gaugeMetrics["RandomValue"] = rand.Float64()
-	metrics.counterMetrics["PollCount"] += 1
+	metrics.counterMetrics["PollCount"]++
 }

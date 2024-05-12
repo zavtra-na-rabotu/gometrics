@@ -1,11 +1,12 @@
 package main
 
 import (
+	"net/http"
+
 	"github.com/go-chi/chi/v5"
 	"github.com/zavtra-na-rabotu/gometrics/internal"
 	"github.com/zavtra-na-rabotu/gometrics/internal/server/handlers"
 	"github.com/zavtra-na-rabotu/gometrics/internal/server/storage"
-	"net/http"
 )
 
 func main() {

@@ -2,9 +2,10 @@ package metrics
 
 import (
 	"fmt"
+	"net/http"
+
 	"github.com/go-resty/resty/v2"
-	"github.com/zavtra-na-rabotu/gometrics/internal"
-	"log"
+	"github.com/zavtra-na-rabotu/gometrics/internal/model"
 )
 
 type Sender struct {
@@ -19,20 +20,36 @@ func NewSender(client *resty.Client, metrics *Collector) *Sender {
 	}
 }
 
-func (sender *Sender) Send() {
+func (sender *Sender) Send() error {
 	for name, metric := range sender.metrics.gaugeMetrics {
-		sendMetric(sender.client, internal.Gauge, name, metric)
+		err := sendMetric(sender.client, model.Gauge, name, metric)
+		if err != nil {
+			return err
+		}
 	}
 	for name, metric := range sender.metrics.counterMetrics {
-		sendMetric(sender.client, internal.Counter, name, metric)
+		err := sendMetric(sender.client, model.Counter, name, metric)
+		if err != nil {
+			return err
+		}
 	}
+	return nil
 }
 
-func sendMetric[T int64 | float64](client *resty.Client, metricType internal.MetricType, metricName string, value T) {
+func sendMetric[T int64 | float64](
+	client *resty.Client,
+	metricType model.MetricType,
+	metricName string,
+	value T,
+) error {
 	url := fmt.Sprintf("/update/%s/%s/%v", metricType, metricName, value)
 
-	_, err := client.R().Post(url)
+	response, err := client.R().Post(url)
 	if err != nil {
-		log.Printf("Failed to send metric %s: %v", metricName, err)
+		return fmt.Errorf("failed to send metric %s: %w", metricName, err)
 	}
+	if response.StatusCode() != http.StatusOK {
+		return fmt.Errorf("failed to send metric %s, StatusCode: %d", metricName, response.StatusCode())
+	}
+	return nil
 }

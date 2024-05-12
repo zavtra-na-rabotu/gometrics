@@ -2,12 +2,13 @@ package handlers
 
 import (
 	"fmt"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-	"github.com/zavtra-na-rabotu/gometrics/internal/server/storage"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"github.com/zavtra-na-rabotu/gometrics/internal/server/storage"
 )
 
 func TestUpdateMetricHandler(t *testing.T) {
@@ -85,7 +86,7 @@ func TestUpdateMetricHandler(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			url := fmt.Sprintf("/update/%s/%s/%s", test.request.metricType, test.request.metricName, test.request.metricValue)
 
-			request := httptest.NewRequest(http.MethodPost, url, nil)
+			request := httptest.NewRequest(http.MethodPost, url, http.NoBody)
 			request.SetPathValue("type", test.request.metricType)
 			request.SetPathValue("name", test.request.metricName)
 			request.SetPathValue("value", test.request.metricValue)
