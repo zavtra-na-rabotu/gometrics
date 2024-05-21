@@ -189,7 +189,7 @@ linters-settings:
   goimports:
     local-prefixes: ""
 
-  gomnd:
+  mnd:
     checks:
       - argument
       - case
@@ -495,7 +495,7 @@ linters:
     - godot
     - gofmt
     - goimports
-    - gomnd
+    - mnd
     - goprintffuncname
     - gosec
     - gosimple
