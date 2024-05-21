@@ -4,7 +4,7 @@ import (
 	"flag"
 
 	"github.com/caarlos0/env/v11"
-	"github.com/zavtra-na-rabotu/gometrics/internal"
+	"go.uber.org/zap"
 )
 
 var config struct {
@@ -31,7 +31,7 @@ func Configure() {
 	envVariables := envs{}
 	err := env.Parse(&envVariables)
 	if err != nil {
-		internal.ErrorLog.Printf("Failed to parse environment variables: %s", err)
+		zap.L().Error("Failed to parse environment variables", zap.Error(err))
 	}
 
 	if envVariables.ServerAddress != "" {

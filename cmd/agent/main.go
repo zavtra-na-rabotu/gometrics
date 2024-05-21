@@ -4,11 +4,13 @@ import (
 	"time"
 
 	"github.com/go-resty/resty/v2"
-	"github.com/zavtra-na-rabotu/gometrics/internal"
 	"github.com/zavtra-na-rabotu/gometrics/internal/agent/metrics"
+	"github.com/zavtra-na-rabotu/gometrics/internal/logger"
+	"go.uber.org/zap"
 )
 
 func main() {
+	logger.InitLogger()
 	Configure()
 
 	// FIXME: "http://"...
@@ -30,7 +32,7 @@ func main() {
 			case <-senderTicker.C:
 				err := metricsSender.Send()
 				if err != nil {
-					internal.ErrorLog.Printf("Error sending metrics: %v", err)
+					zap.L().Error("Failed to send metrics to server", zap.Error(err))
 					continue
 				}
 				metricsCollector.ResetPollCounter()
