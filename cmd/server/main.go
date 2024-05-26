@@ -26,8 +26,8 @@ func main() {
 	r.Get("/", v1.RenderAllMetrics(memStorage))
 
 	// API v2
-	r.Post("/update", v2.UpdateMetric(memStorage))
-	r.Post("/value", v2.GetMetric(memStorage))
+	r.Post("/update/", v2.UpdateMetric(memStorage))
+	r.Post("/value/", v2.GetMetric(memStorage))
 
 	err := http.ListenAndServe(serverAddress, r)
 	if err != nil {
