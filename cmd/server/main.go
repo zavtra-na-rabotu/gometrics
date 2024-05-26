@@ -19,6 +19,7 @@ func main() {
 	memStorage := storage.NewMemStorage()
 	r := chi.NewRouter()
 	r.Use(middleware.RequestLoggerMiddleware)
+	r.Use(middleware.GzipMiddleware)
 
 	// API v1
 	r.Post("/update/{type}/{name}/{value}", v1.UpdateMetric(memStorage))

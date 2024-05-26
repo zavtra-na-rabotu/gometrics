@@ -35,8 +35,20 @@ func UpdateMetric(st storage.Storage) http.HandlerFunc {
 
 		switch metrics.MType {
 		case string(model.Counter):
+			if metrics.Delta == nil {
+				zap.L().Error("Empty metric", zap.String("name", metrics.ID), zap.String("type", metrics.MType))
+				w.WriteHeader(http.StatusBadRequest)
+				return
+			}
+
 			*metrics.Delta = st.UpdateCounterAndReturn(metrics.ID, *metrics.Delta)
 		case string(model.Gauge):
+			if metrics.Value == nil {
+				zap.L().Error("Empty metric", zap.String("name", metrics.ID), zap.String("type", metrics.MType))
+				w.WriteHeader(http.StatusBadRequest)
+				return
+			}
+
 			st.UpdateGauge(metrics.ID, *metrics.Value)
 		}
 
