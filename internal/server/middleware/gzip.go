@@ -29,9 +29,9 @@ func (c *compressWriter) Write(p []byte) (int, error) {
 }
 
 func (c *compressWriter) WriteHeader(statusCode int) {
-	if statusCode < http.StatusMultipleChoices {
-		c.w.Header().Set("Content-Encoding", "gzip")
-	}
+	//if statusCode < http.StatusMultipleChoices {
+	//	c.w.Header().Set("Content-Encoding", "gzip")
+	//}
 	c.w.WriteHeader(statusCode)
 }
 
@@ -56,7 +56,7 @@ func newCompressReader(r io.ReadCloser) (*compressReader, error) {
 	}, nil
 }
 
-func (c compressReader) Read(p []byte) (n int, err error) {
+func (c *compressReader) Read(p []byte) (n int, err error) {
 	return c.gr.Read(p)
 }
 
@@ -77,6 +77,7 @@ func GzipMiddleware(next http.Handler) http.Handler {
 		if acceptGzip {
 			gzipWriter := newCompressWriter(w)
 			responseWriter = gzipWriter
+			responseWriter.Header().Set("Content-Encoding", "gzip")
 			defer func() {
 				if err := gzipWriter.Close(); err != nil {
 					http.Error(w, "Failed to close gzip writer", http.StatusInternalServerError)
