@@ -39,7 +39,7 @@ func (sender *Sender) Send() error {
 func sendCounterMetric(client *resty.Client, metricType model.MetricType, metricName string, delta int64) error {
 	response, err := client.R().
 		SetBody(model.Metrics{ID: metricName, MType: string(metricType), Delta: &delta}).
-		Post("/update")
+		Post("/update/")
 
 	if err != nil {
 		return fmt.Errorf("failed to send counter metric %s: %w", metricName, err)
@@ -53,7 +53,7 @@ func sendCounterMetric(client *resty.Client, metricType model.MetricType, metric
 func sendGaugeMetric(client *resty.Client, metricType model.MetricType, metricName string, value float64) error {
 	response, err := client.R().
 		SetBody(model.Metrics{ID: metricName, MType: string(metricType), Value: &value}).
-		Post("/update")
+		Post("/update/")
 
 	if err != nil {
 		return fmt.Errorf("failed to send gauge metric %s: %w", metricName, err)
