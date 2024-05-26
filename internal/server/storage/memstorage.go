@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/zavtra-na-rabotu/gometrics/internal"
+	"go.uber.org/zap"
 )
 
 type MemStorage struct {
@@ -28,7 +28,7 @@ func (storage *MemStorage) UpdateGauge(name string, metric float64) {
 	defer storage.gaugeLock.Unlock()
 
 	storage.gauge[name] = metric
-	internal.InfoLog.Printf("updated gauge: '%s' with value: %f", name, metric)
+	zap.L().Info("Updated gauge", zap.String("name", name), zap.Float64("metric", metric))
 }
 
 func (storage *MemStorage) UpdateCounter(name string, metric int64) {
@@ -36,7 +36,17 @@ func (storage *MemStorage) UpdateCounter(name string, metric int64) {
 	defer storage.counterLock.Unlock()
 
 	storage.counter[name] += metric
-	internal.InfoLog.Printf("updated counter: '%s' with value: %d", name, metric)
+	zap.L().Info("Updated counter", zap.String("name", name), zap.Int64("metric", metric))
+}
+
+func (storage *MemStorage) UpdateCounterAndReturn(name string, metric int64) int64 {
+	storage.counterLock.Lock()
+	defer storage.counterLock.Unlock()
+
+	storage.counter[name] += metric
+	zap.L().Info("Updated counter", zap.String("name", name), zap.Int64("metric", metric))
+
+	return storage.counter[name]
 }
 
 func (storage *MemStorage) GetGauge(name string) (float64, error) {
