@@ -5,6 +5,7 @@ import "errors"
 type Storage interface {
 	UpdateGauge(name string, metric float64)
 	UpdateCounter(name string, metric int64)
+	UpdateCounterAndReturn(name string, metric int64) int64
 	GetGauge(name string) (float64, error)
 	GetCounter(name string) (int64, error)
 	GetAllGauge() map[string]float64
