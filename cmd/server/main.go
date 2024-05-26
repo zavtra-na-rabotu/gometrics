@@ -5,7 +5,8 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/zavtra-na-rabotu/gometrics/internal/logger"
-	"github.com/zavtra-na-rabotu/gometrics/internal/server/handlers"
+	v1 "github.com/zavtra-na-rabotu/gometrics/internal/server/handlers/v1"
+	v2 "github.com/zavtra-na-rabotu/gometrics/internal/server/handlers/v2"
 	"github.com/zavtra-na-rabotu/gometrics/internal/server/middleware"
 	"github.com/zavtra-na-rabotu/gometrics/internal/server/storage"
 	"go.uber.org/zap"
@@ -19,9 +20,14 @@ func main() {
 	r := chi.NewRouter()
 	r.Use(middleware.RequestLoggerMiddleware)
 
-	r.Post("/update/{type}/{name}/{value}", handlers.UpdateMetric(memStorage))
-	r.Get("/value/{type}/{name}", handlers.GetMetric(memStorage))
-	r.Get("/", handlers.RenderAllMetrics(memStorage))
+	// API v1
+	r.Post("/update/{type}/{name}/{value}", v1.UpdateMetric(memStorage))
+	r.Get("/value/{type}/{name}", v1.GetMetric(memStorage))
+	r.Get("/", v1.RenderAllMetrics(memStorage))
+
+	// API v2
+	r.Post("/update", v2.UpdateMetric(memStorage))
+	r.Post("/value", v2.GetMetric(memStorage))
 
 	err := http.ListenAndServe(serverAddress, r)
 	if err != nil {

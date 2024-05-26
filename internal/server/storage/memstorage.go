@@ -39,6 +39,16 @@ func (storage *MemStorage) UpdateCounter(name string, metric int64) {
 	zap.L().Info("Updated counter", zap.String("name", name), zap.Int64("metric", metric))
 }
 
+func (storage *MemStorage) UpdateCounterAndReturn(name string, metric int64) int64 {
+	storage.counterLock.Lock()
+	defer storage.counterLock.Unlock()
+
+	storage.counter[name] += metric
+	zap.L().Info("Updated counter", zap.String("name", name), zap.Int64("metric", metric))
+
+	return storage.counter[name]
+}
+
 func (storage *MemStorage) GetGauge(name string) (float64, error) {
 	storage.gaugeLock.RLock()
 	defer storage.gaugeLock.RUnlock()
