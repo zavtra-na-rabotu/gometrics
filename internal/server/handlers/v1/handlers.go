@@ -125,6 +125,8 @@ func UpdateMetric(st storage.Storage) http.HandlerFunc {
 
 func RenderAllMetrics(st *storage.MemStorage) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+
 		wd, _ := os.Getwd()
 		metricsTemplate, err := template.ParseFiles(wd + "/internal/server/web/metrics/metrics.tmpl")
 		if err != nil {
@@ -157,7 +159,5 @@ func RenderAllMetrics(st *storage.MemStorage) http.HandlerFunc {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	}
 }
