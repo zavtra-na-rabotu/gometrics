@@ -135,7 +135,7 @@ func RenderAllMetrics(st *storage.MemStorage) http.HandlerFunc {
 			return
 		}
 
-		allMetrics := []MetricResponse{}
+		var allMetrics []MetricResponse
 
 		for name, metric := range st.GetAllGauge() {
 			allMetrics = append(allMetrics, MetricResponse{

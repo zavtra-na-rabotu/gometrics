@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"os"
 
 	"github.com/caarlos0/env/v11"
 	"go.uber.org/zap"
@@ -19,6 +20,7 @@ type envs struct {
 	PollInterval   int    `env:"POLL_INTERVAL"`
 }
 
+// Configure TODO: Move to internal
 func Configure() {
 	const defaultReportInterval = 10
 	const defaultPollInterval = 2
@@ -34,13 +36,18 @@ func Configure() {
 		zap.L().Error("Failed to parse environment variables", zap.Error(err))
 	}
 
-	if envVariables.ServerAddress != "" {
+	_, exists := os.LookupEnv("ADDRESS")
+	if exists && envVariables.ServerAddress != "" {
 		config.serverAddress = envVariables.ServerAddress
 	}
-	if envVariables.ReportInterval != 0 {
+
+	_, exists = os.LookupEnv("REPORT_INTERVAL")
+	if exists && envVariables.ReportInterval != 0 {
 		config.reportInterval = envVariables.ReportInterval
 	}
-	if envVariables.PollInterval != 0 {
+
+	_, exists = os.LookupEnv("POLL_INTERVAL")
+	if exists && envVariables.PollInterval != 0 {
 		config.pollInterval = envVariables.PollInterval
 	}
 }

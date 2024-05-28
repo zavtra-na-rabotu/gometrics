@@ -2,6 +2,7 @@ package main
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/zavtra-na-rabotu/gometrics/internal/logger"
@@ -30,7 +31,24 @@ func main() {
 	r.Post("/update/", v2.UpdateMetric(memStorage))
 	r.Post("/value/", v2.GetMetric(memStorage))
 
-	err := http.ListenAndServe(serverAddress, r)
+	// Try to restore metrics from file
+	if config.restore {
+		err := storage.RestoreMetricsFromFile(memStorage, config.fileStoragePath)
+		if err != nil {
+			zap.L().Error("Error restoring metrics", zap.Error(err))
+		}
+	}
+
+	// Save metrics to file every {config.storeInterval} seconds
+	storeToFileTicker := time.NewTicker(time.Duration(config.storeInterval) * time.Second)
+	go func() {
+		for {
+			<-storeToFileTicker.C
+			_ = storage.WriteMetricsToFile(memStorage, config.fileStoragePath)
+		}
+	}()
+
+	err := http.ListenAndServe(config.serverAddress, r)
 	if err != nil {
 		zap.L().Fatal("Failed to start server", zap.Error(err))
 	}
