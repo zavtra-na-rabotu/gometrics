@@ -58,7 +58,7 @@ func NewReader(filename string) (*Reader, error) {
 
 func (c *Reader) ReadMetric() (*model.Metrics, error) {
 	if !c.scanner.Scan() {
-		return nil, fmt.Errorf("error scanning metrics: %w", c.scanner.Err())
+		return nil, c.scanner.Err()
 	}
 
 	data := c.scanner.Bytes()
