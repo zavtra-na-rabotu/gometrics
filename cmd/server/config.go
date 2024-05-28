@@ -10,19 +10,19 @@ import (
 
 var config struct {
 	serverAddress   string
-	storeInterval   int
 	fileStoragePath string
+	storeInterval   int
 	restore         bool
 }
 
 type envs struct {
 	Address         string `env:"ADDRESS"`
-	StoreInterval   int    `env:"STORE_INTERVAL"`
 	FileStoragePath string `env:"FILE_STORAGE_PATH"`
+	StoreInterval   int    `env:"STORE_INTERVAL"`
 	Restore         bool   `env:"RESTORE"`
 }
 
-// Configure TODO: Move to internal
+// Configure TODO: Move to internal.
 func Configure() {
 	const defaultStoreInterval = 300
 	const defaultFileStoragePath = "/tmp/metrics-db.json"

@@ -20,7 +20,7 @@ type envs struct {
 	PollInterval   int    `env:"POLL_INTERVAL"`
 }
 
-// Configure TODO: Move to internal
+// Configure TODO: Move to internal.
 func Configure() {
 	const defaultReportInterval = 10
 	const defaultPollInterval = 2

@@ -11,15 +11,16 @@ type compressWriter struct {
 	gw *gzip.Writer
 }
 
+func (w *compressWriter) Write(b []byte) (int, error) {
+	return w.gw.Write(b)
+}
+
 func GzipMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Check if client accepts gzip encoding and Content-Type is (application/json or text/html)
+		// Compress
 		acceptEncoding := r.Header.Get("Accept-Encoding")
-		contentType := r.Header.Get("Content-Type")
-
 		acceptGzip := strings.Contains(acceptEncoding, "gzip")
-		compressAllowed := strings.Contains(contentType, "application/json") || strings.Contains(contentType, "text/html")
-		if acceptGzip && compressAllowed {
+		if acceptGzip {
 			w.Header().Set("Content-Encoding", "gzip")
 
 			gzWriter := gzip.NewWriter(w)
@@ -30,11 +31,11 @@ func GzipMiddleware(next http.Handler) http.Handler {
 				}
 			}()
 
-			cmpWriter := &compressWriter{gw: gzWriter, ResponseWriter: w}
+			cmpWriter := &compressWriter{ResponseWriter: w, gw: gzWriter}
 			w = cmpWriter
 		}
 
-		// Decompress request if Content-Encoding is gzip
+		// Decompress
 		contentEncoding := r.Header.Get("Content-Encoding")
 		receivedGzip := strings.Contains(contentEncoding, "gzip")
 		if receivedGzip {

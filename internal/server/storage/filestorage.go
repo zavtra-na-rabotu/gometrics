@@ -3,6 +3,7 @@ package storage
 import (
 	"bufio"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -17,9 +18,9 @@ type Writer struct {
 }
 
 func NewWriter(fileStoragePath string) (*Writer, error) {
-	file, err := os.OpenFile(fileStoragePath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0666)
+	file, err := os.OpenFile(fileStoragePath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o600)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error opening file: %w", err)
 	}
 	return &Writer{file, bufio.NewWriter(file)}, nil
 }
@@ -27,13 +28,13 @@ func NewWriter(fileStoragePath string) (*Writer, error) {
 func (p *Writer) WriteMetric(metrics model.Metrics) error {
 	data, err := json.Marshal(&metrics)
 	if err != nil {
-		return err
+		return fmt.Errorf("error marshalling metrics: %w", err)
 	}
 	if _, err := p.writer.Write(data); err != nil {
-		return err
+		return fmt.Errorf("error writing metrics: %w", err)
 	}
 	if err := p.writer.WriteByte('\n'); err != nil {
-		return err
+		return fmt.Errorf("error writing new line: %w", err)
 	}
 	return p.writer.Flush()
 }
@@ -48,16 +49,16 @@ type Reader struct {
 }
 
 func NewReader(filename string) (*Reader, error) {
-	file, err := os.OpenFile(filename, os.O_RDONLY|os.O_CREATE, 0666)
+	file, err := os.OpenFile(filename, os.O_RDONLY|os.O_CREATE, 0o600)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error opening file: %w", err)
 	}
 	return &Reader{file, bufio.NewScanner(file)}, nil
 }
 
 func (c *Reader) ReadMetric() (*model.Metrics, error) {
 	if !c.scanner.Scan() {
-		return nil, c.scanner.Err()
+		return nil, fmt.Errorf("error scanning metrics: %w", c.scanner.Err())
 	}
 
 	data := c.scanner.Bytes()
@@ -65,7 +66,7 @@ func (c *Reader) ReadMetric() (*model.Metrics, error) {
 	metrics := model.Metrics{}
 	err := json.Unmarshal(data, &metrics)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error unmarshalling metrics: %w", err)
 	}
 
 	return &metrics, nil
@@ -116,7 +117,7 @@ func RestoreMetricsFromFile(memStorage *MemStorage, fileStoragePath string) erro
 	for {
 		metric, err := reader.ReadMetric()
 		if err != nil {
-			if err == io.EOF {
+			if errors.Is(err, io.EOF) {
 				break
 			}
 			continue

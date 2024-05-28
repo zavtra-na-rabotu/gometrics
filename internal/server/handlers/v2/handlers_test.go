@@ -17,6 +17,7 @@ func TestGzipCompression(t *testing.T) {
 	handler := middleware.GzipMiddleware(UpdateMetric(storage.NewMemStorage()))
 
 	srv := httptest.NewServer(handler)
+
 	defer srv.Close()
 
 	requestBody := `{
