@@ -107,7 +107,13 @@ func UpdateMetric(st storage.Storage) http.HandlerFunc {
 				w.WriteHeader(http.StatusBadRequest)
 				return
 			}
-			st.UpdateCounter(metricName, value)
+
+			err = st.UpdateCounter(metricName, value)
+			if err != nil {
+				zap.L().Error("Error while updating counter metric", zap.Error(err))
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
 		case model.Gauge:
 			value, err := strconv.ParseFloat(metricValue, 64)
 			if err != nil {
@@ -115,7 +121,13 @@ func UpdateMetric(st storage.Storage) http.HandlerFunc {
 				w.WriteHeader(http.StatusBadRequest)
 				return
 			}
-			st.UpdateGauge(metricName, value)
+
+			err = st.UpdateGauge(metricName, value)
+			if err != nil {
+				zap.L().Error("Error while updating gauge metric", zap.Error(err))
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
 		}
 
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")

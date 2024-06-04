@@ -41,7 +41,12 @@ func UpdateMetric(st storage.Storage) http.HandlerFunc {
 				return
 			}
 
-			*metrics.Delta = st.UpdateCounterAndReturn(metrics.ID, *metrics.Delta)
+			newDelta, err := st.UpdateCounterAndReturn(metrics.ID, *metrics.Delta)
+			if err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+			*metrics.Delta = newDelta
 		case string(model.Gauge):
 			if metrics.Value == nil {
 				zap.L().Error("Empty metric", zap.String("name", metrics.ID), zap.String("type", metrics.MType))
@@ -49,7 +54,12 @@ func UpdateMetric(st storage.Storage) http.HandlerFunc {
 				return
 			}
 
-			st.UpdateGauge(metrics.ID, *metrics.Value)
+			err := st.UpdateGauge(metrics.ID, *metrics.Value)
+			if err != nil {
+				zap.L().Error("Failed to update gauge metric", zap.Error(err))
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
 		}
 
 		w.Header().Set("Content-Type", "application/json")

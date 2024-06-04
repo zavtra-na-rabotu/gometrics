@@ -17,6 +17,8 @@ type Writer struct {
 	writer *bufio.Writer
 }
 
+var ErrFileStoragePathNotProvided = errors.New("file storage path not provided")
+
 func NewWriter(fileStoragePath string) (*Writer, error) {
 	file, err := os.OpenFile(fileStoragePath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o600)
 	if err != nil {
@@ -77,15 +79,19 @@ func (c *Reader) Close() error {
 }
 
 func WriteMetricsToFile(memStorage *MemStorage, fileStoragePath string) error {
+	if fileStoragePath == "" {
+		return ErrFileStoragePathNotProvided
+	}
+
 	writer, err := NewWriter(fileStoragePath)
 	if err != nil {
 		return fmt.Errorf("could not create file writer: %w", err)
 	}
 
-	gagueMetrics := memStorage.GetAllGauge()
+	gaugeMetrics := memStorage.GetAllGauge()
 	counterMetrics := memStorage.GetAllCounter()
 
-	for name, metric := range gagueMetrics {
+	for name, metric := range gaugeMetrics {
 		err = writer.WriteMetric(model.Metrics{ID: name, MType: string(model.Gauge), Value: &metric})
 		if err != nil {
 			return fmt.Errorf("could not write gauge metric: %w", err)
@@ -103,16 +109,20 @@ func WriteMetricsToFile(memStorage *MemStorage, fileStoragePath string) error {
 }
 
 func RestoreMetricsFromFile(memStorage *MemStorage, fileStoragePath string) error {
+	if fileStoragePath == "" {
+		return ErrFileStoragePathNotProvided
+	}
+
 	reader, err := NewReader(fileStoragePath)
+	if err != nil {
+		zap.L().Error("Failed to create new reader", zap.Error(err))
+		return fmt.Errorf("failed to create new reader: %w", err)
+	}
 	defer func() {
 		if err := reader.Close(); err != nil {
 			zap.L().Error("failed to close reader", zap.Error(err))
 		}
 	}()
-	if err != nil {
-		zap.L().Error("Failed to create new reader", zap.Error(err))
-		return fmt.Errorf("failed to create new reader: %w", err)
-	}
 
 	for {
 		metric, err := reader.ReadMetric()
@@ -126,10 +136,16 @@ func RestoreMetricsFromFile(memStorage *MemStorage, fileStoragePath string) erro
 			break
 		}
 		if metric.MType == string(model.Gauge) {
-			memStorage.UpdateGauge(metric.ID, *metric.Value)
+			err = memStorage.UpdateGauge(metric.ID, *metric.Value)
+			if err != nil {
+				return fmt.Errorf("could not update gauge: %w", err)
+			}
 			zap.L().Info("Gauge read from file", zap.String("name", metric.ID), zap.Float64("value", *metric.Value))
 		} else if metric.MType == string(model.Counter) {
-			memStorage.UpdateCounter(metric.ID, *metric.Delta)
+			err = memStorage.UpdateCounter(metric.ID, *metric.Delta)
+			if err != nil {
+				return fmt.Errorf("could not update counter: %w", err)
+			}
 			zap.L().Info("Counter read from file", zap.String("name", metric.ID), zap.Int64("delta", *metric.Delta))
 		}
 	}

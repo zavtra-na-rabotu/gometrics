@@ -46,7 +46,7 @@ func Configure() {
 	}
 
 	_, exists = os.LookupEnv("STORE_INTERVAL")
-	if exists && envVariables.StoreInterval != 0 {
+	if exists {
 		config.storeInterval = envVariables.StoreInterval
 	}
 
