@@ -2,9 +2,10 @@ package main
 
 import (
 	"flag"
+	"os"
 
 	"github.com/caarlos0/env/v11"
-	"github.com/zavtra-na-rabotu/gometrics/internal"
+	"go.uber.org/zap"
 )
 
 var config struct {
@@ -19,6 +20,7 @@ type envs struct {
 	PollInterval   int    `env:"POLL_INTERVAL"`
 }
 
+// Configure TODO: Move to internal.
 func Configure() {
 	const defaultReportInterval = 10
 	const defaultPollInterval = 2
@@ -31,16 +33,21 @@ func Configure() {
 	envVariables := envs{}
 	err := env.Parse(&envVariables)
 	if err != nil {
-		internal.ErrorLog.Printf("Failed to parse environment variables: %s", err)
+		zap.L().Error("Failed to parse environment variables", zap.Error(err))
 	}
 
-	if envVariables.ServerAddress != "" {
+	_, exists := os.LookupEnv("ADDRESS")
+	if exists && envVariables.ServerAddress != "" {
 		config.serverAddress = envVariables.ServerAddress
 	}
-	if envVariables.ReportInterval != 0 {
+
+	_, exists = os.LookupEnv("REPORT_INTERVAL")
+	if exists && envVariables.ReportInterval != 0 {
 		config.reportInterval = envVariables.ReportInterval
 	}
-	if envVariables.PollInterval != 0 {
+
+	_, exists = os.LookupEnv("POLL_INTERVAL")
+	if exists && envVariables.PollInterval != 0 {
 		config.pollInterval = envVariables.PollInterval
 	}
 }

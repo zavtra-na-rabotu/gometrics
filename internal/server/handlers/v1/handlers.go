@@ -1,4 +1,4 @@
-package handlers
+package v1
 
 import (
 	"errors"
@@ -7,10 +7,10 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/zavtra-na-rabotu/gometrics/internal"
 	"github.com/zavtra-na-rabotu/gometrics/internal/model"
 	"github.com/zavtra-na-rabotu/gometrics/internal/server/storage"
 	"github.com/zavtra-na-rabotu/gometrics/internal/utils/stringutils"
+	"go.uber.org/zap"
 )
 
 type MetricResponse struct {
@@ -27,14 +27,14 @@ func GetMetric(st storage.Storage) http.HandlerFunc {
 
 		// Validate MetricType TODO: Remove duplicates
 		if !(metricType == model.Counter || metricType == model.Gauge) {
-			internal.ErrorLog.Printf("Invalid metric type: %s", metricType)
+			zap.L().Error("Invalid metric type", zap.String("metricType", string(metricType)))
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
 
 		// Validate MetricName TODO: Remove duplicates
 		if stringutils.IsEmpty(metricName) {
-			internal.ErrorLog.Printf("Invalid metric name: %s", metricName)
+			zap.L().Error("Invalid metric name", zap.String("metricName", metricName))
 			w.WriteHeader(http.StatusNotFound)
 			return
 		}
@@ -49,7 +49,7 @@ func GetMetric(st storage.Storage) http.HandlerFunc {
 					w.WriteHeader(http.StatusNotFound)
 					return
 				}
-				internal.ErrorLog.Printf("Error while getting counter metric: %s", err)
+				zap.L().Error("Error while getting counter metric", zap.String("metricName", metricName), zap.Error(err))
 				w.WriteHeader(http.StatusInternalServerError)
 				return
 			}
@@ -61,7 +61,7 @@ func GetMetric(st storage.Storage) http.HandlerFunc {
 					w.WriteHeader(http.StatusNotFound)
 					return
 				}
-				internal.ErrorLog.Printf("Error while getting gauge metric: %s", err)
+				zap.L().Error("Error while getting gauge metric", zap.String("metricName", metricName), zap.Error(err))
 				w.WriteHeader(http.StatusInternalServerError)
 				return
 			}
@@ -71,7 +71,7 @@ func GetMetric(st storage.Storage) http.HandlerFunc {
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		_, err := w.Write([]byte(response))
 		if err != nil {
-			internal.ErrorLog.Println("Error writing response:", err)
+			zap.L().Error("Error while writing response", zap.Error(err))
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
@@ -87,14 +87,14 @@ func UpdateMetric(st storage.Storage) http.HandlerFunc {
 
 		// Validate MetricType TODO: Remove duplicates
 		if !(metricType == model.Counter || metricType == model.Gauge) {
-			internal.ErrorLog.Printf("Invalid metric type: %s", metricType)
+			zap.L().Error("Invalid metric type", zap.String("metricType", string(metricType)))
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
 
 		// Validate MetricName TODO: Remove duplicates
 		if stringutils.IsEmpty(metricName) {
-			internal.ErrorLog.Printf("Invalid metric name: %s", metricName)
+			zap.L().Error("Invalid metric name", zap.String("metricName", metricName))
 			w.WriteHeader(http.StatusNotFound)
 			return
 		}
@@ -103,19 +103,31 @@ func UpdateMetric(st storage.Storage) http.HandlerFunc {
 		case model.Counter:
 			value, err := strconv.ParseInt(metricValue, 10, 64)
 			if err != nil {
-				internal.ErrorLog.Printf("Failed to parse value from metric '%s': %s\n", metricValue, err)
+				zap.L().Error("Failed to parse value from metric", zap.String("metricValue", metricValue), zap.Error(err))
 				w.WriteHeader(http.StatusBadRequest)
 				return
 			}
-			st.UpdateCounter(metricName, value)
+
+			err = st.UpdateCounter(metricName, value)
+			if err != nil {
+				zap.L().Error("Error while updating counter metric", zap.Error(err))
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
 		case model.Gauge:
 			value, err := strconv.ParseFloat(metricValue, 64)
 			if err != nil {
-				internal.ErrorLog.Printf("Failed to parse value from metric '%s': %s\n", metricValue, err)
+				zap.L().Error("Failed to parse value from metric", zap.String("metricValue", metricValue), zap.Error(err))
 				w.WriteHeader(http.StatusBadRequest)
 				return
 			}
-			st.UpdateGauge(metricName, value)
+
+			err = st.UpdateGauge(metricName, value)
+			if err != nil {
+				zap.L().Error("Error while updating gauge metric", zap.Error(err))
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
 		}
 
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
@@ -125,15 +137,17 @@ func UpdateMetric(st storage.Storage) http.HandlerFunc {
 
 func RenderAllMetrics(st *storage.MemStorage) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+
 		wd, _ := os.Getwd()
 		metricsTemplate, err := template.ParseFiles(wd + "/internal/server/web/metrics/metrics.tmpl")
 		if err != nil {
-			internal.ErrorLog.Printf("Error while parsing template: %s", err)
+			zap.L().Error("Error while parsing template", zap.Error(err))
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 
-		allMetrics := []MetricResponse{}
+		var allMetrics []MetricResponse
 
 		for name, metric := range st.GetAllGauge() {
 			allMetrics = append(allMetrics, MetricResponse{
@@ -153,11 +167,9 @@ func RenderAllMetrics(st *storage.MemStorage) http.HandlerFunc {
 
 		err = metricsTemplate.Execute(w, allMetrics)
 		if err != nil {
-			internal.ErrorLog.Printf("Failed to render all metrics: %s", err)
+			zap.L().Error("Error while executing template", zap.Error(err))
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	}
 }
