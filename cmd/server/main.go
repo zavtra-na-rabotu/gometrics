@@ -7,6 +7,7 @@ import (
 	"github.com/zavtra-na-rabotu/gometrics/internal/logger"
 	v1 "github.com/zavtra-na-rabotu/gometrics/internal/server/handlers/v1"
 	v2 "github.com/zavtra-na-rabotu/gometrics/internal/server/handlers/v2"
+	v3 "github.com/zavtra-na-rabotu/gometrics/internal/server/handlers/v3"
 	"github.com/zavtra-na-rabotu/gometrics/internal/server/middleware"
 	"github.com/zavtra-na-rabotu/gometrics/internal/server/storage"
 	"go.uber.org/zap"
@@ -17,6 +18,11 @@ func main() {
 	Configure()
 
 	memStorage := storage.NewMemStorage()
+
+	dbStorage, err := storage.NewDBStorage(config.databaseDsn)
+	if err != nil {
+		zap.L().Fatal("Failed to connect to database", zap.Error(err))
+	}
 
 	r := chi.NewRouter()
 	r.Use(middleware.RequestLoggerMiddleware)
@@ -31,7 +37,10 @@ func main() {
 	r.Post("/update/", v2.UpdateMetric(memStorage))
 	r.Post("/value/", v2.GetMetric(memStorage))
 
-	err := storage.ConfigureStorage(memStorage, config.fileStoragePath, config.restore, config.storeInterval)
+	// API v3
+	r.Get("/ping", v3.Ping(dbStorage))
+
+	err = storage.ConfigureStorage(memStorage, config.fileStoragePath, config.restore, config.storeInterval)
 	if err != nil {
 		zap.L().Fatal("failed to configure storage", zap.Error(err))
 	}
