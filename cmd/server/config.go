@@ -13,6 +13,7 @@ var config struct {
 	fileStoragePath string
 	storeInterval   int
 	restore         bool
+	databaseDsn     string
 }
 
 type envs struct {
@@ -20,6 +21,7 @@ type envs struct {
 	FileStoragePath string `env:"FILE_STORAGE_PATH"`
 	StoreInterval   int    `env:"STORE_INTERVAL"`
 	Restore         bool   `env:"RESTORE"`
+	DatabaseDsn     string `env:"DATABASE_DSN"`
 }
 
 // Configure TODO: Move to internal.
@@ -32,6 +34,7 @@ func Configure() {
 	flag.IntVar(&config.storeInterval, "i", defaultStoreInterval, "Store interval in seconds")
 	flag.StringVar(&config.fileStoragePath, "f", defaultFileStoragePath, "File storage path")
 	flag.BoolVar(&config.restore, "r", defaultRestore, "Restore")
+	flag.StringVar(&config.databaseDsn, "d", "postgres://postgres:postgres@localhost:5432/metrics", "Database DSN")
 	flag.Parse()
 
 	envVariables := envs{}
@@ -58,5 +61,10 @@ func Configure() {
 	_, exists = os.LookupEnv("RESTORE")
 	if exists {
 		config.restore = envVariables.Restore
+	}
+
+	_, exists = os.LookupEnv("DATABASE_DSN")
+	if exists {
+		config.databaseDsn = envVariables.DatabaseDsn
 	}
 }
