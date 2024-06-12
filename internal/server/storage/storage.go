@@ -8,8 +8,8 @@ type Storage interface {
 	UpdateCounterAndReturn(name string, metric int64) (int64, error)
 	GetGauge(name string) (float64, error)
 	GetCounter(name string) (int64, error)
-	GetAllGauge() map[string]float64
-	GetAllCounter() map[string]int64
+	GetAllGauge() (map[string]float64, error)
+	GetAllCounter() (map[string]int64, error)
 }
 
 var ErrItemNotFound = errors.New("item not found")
