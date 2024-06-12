@@ -1,0 +1,12 @@
+services:
+  db:
+    container_name: metrics_postgres
+    image: postgres:latest
+    tmpfs:
+      - /var/lib/postgresql/data
+    environment:
+      - POSTGRES_DB=metrics
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    ports:
+      - '5432:5432'
