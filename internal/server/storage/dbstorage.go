@@ -3,11 +3,13 @@ package storage
 import (
 	"database/sql"
 	"errors"
+	"fmt"
 
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 	_ "github.com/jackc/pgx/v5/stdlib"
+	"github.com/zavtra-na-rabotu/gometrics/internal/model"
 	"go.uber.org/zap"
 )
 
@@ -54,6 +56,13 @@ func (storage *DBStorage) RunMigrations() error {
 	return nil
 }
 
+func (storage *DBStorage) Close() {
+	err := storage.DB.Close()
+	if err != nil {
+		zap.L().Fatal("Failed to close database", zap.Error(err))
+	}
+}
+
 func (storage *DBStorage) Ping() error {
 	return storage.DB.Ping()
 }
@@ -65,7 +74,9 @@ func (storage *DBStorage) UpdateGauge(name string, metric float64) error {
 	`, name, metric)
 	if err != nil {
 		zap.L().Error("Failed to update gauge metric", zap.Error(err))
+		return err
 	}
+
 	return err
 }
 
@@ -76,6 +87,7 @@ func (storage *DBStorage) UpdateCounter(name string, metric int64) error {
 	`, name, metric)
 	if err != nil {
 		zap.L().Error("Failed to update counter metric", zap.Error(err))
+		return err
 	}
 
 	return err
@@ -171,4 +183,73 @@ func (storage *DBStorage) GetAllCounter() (map[string]int64, error) {
 	}
 
 	return counterMetrics, nil
+}
+
+func (storage *DBStorage) UpdateMetrics(metrics []model.Metrics) error {
+	tx, err := storage.DB.Begin()
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if err != nil {
+			err := tx.Rollback()
+			if err != nil {
+				zap.L().Error("Failed to rollback transaction", zap.Error(err))
+			}
+		} else {
+			err := tx.Commit()
+			if err != nil {
+				zap.L().Error("Failed to commit transaction", zap.Error(err))
+			}
+		}
+	}()
+
+	for _, metric := range metrics {
+		switch metric.MType {
+		case string(model.Gauge):
+			err := updateGaugeInTransaction(tx, metric.ID, *metric.Value)
+			if err != nil {
+				return err
+			}
+		case string(model.Counter):
+			err := updateCounterInTransaction(tx, metric.ID, *metric.Delta)
+			if err != nil {
+				return err
+			}
+		default:
+			return fmt.Errorf("unknown metric type: %s", metric.MType)
+		}
+	}
+
+	return nil
+}
+
+/*
+TODO: Я бы очень хотел написать враппер над уже существующими методами выше, но не понимаю как
+TODO: Если первым аргументом я везде добавлю Tx, то нарушу сигнатуру метода основного интерфейса Storage
+*/
+func updateGaugeInTransaction(tx *sql.Tx, name string, metric float64) error {
+	_, err := tx.Exec(`
+		INSERT INTO gauge (name, value) VALUES ($1, $2)
+		ON CONFLICT (name) DO UPDATE SET value = EXCLUDED.value;
+	`, name, metric)
+	if err != nil {
+		zap.L().Error("Failed to update gauge metric in transaction", zap.Error(err))
+		return err
+	}
+
+	return err
+}
+
+func updateCounterInTransaction(tx *sql.Tx, name string, metric int64) error {
+	_, err := tx.Exec(`
+		INSERT INTO counter (name, value) VALUES ($1, $2)
+		ON CONFLICT (name) DO UPDATE SET value = counter.value + EXCLUDED.value;
+	`, name, metric)
+	if err != nil {
+		zap.L().Error("Failed to update counter metric in transaction", zap.Error(err))
+		return err
+	}
+
+	return err
 }

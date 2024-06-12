@@ -32,14 +32,14 @@ func main() {
 		if err != nil {
 			zap.L().Fatal("Failed to connect to database", zap.Error(err))
 		}
+		defer dbStorage.Close()
 
 		err = dbStorage.RunMigrations()
 		if err != nil {
 			zap.L().Fatal("Failed to run migrations", zap.Error(err))
 		}
-		storageToUse = dbStorage
 
-		r.Get("/ping", v3.Ping(dbStorage))
+		storageToUse = dbStorage
 	} else {
 		zap.L().Info("Using in memory storage")
 
@@ -59,6 +59,10 @@ func main() {
 	// API v2
 	r.Post("/update/", v2.UpdateMetric(storageToUse))
 	r.Post("/value/", v2.GetMetric(storageToUse))
+
+	// API v3
+	r.Get("/ping", v3.Ping(storageToUse))
+	r.Post("/updates/", v3.UpdateMetrics(storageToUse))
 
 	err := http.ListenAndServe(config.serverAddress, r)
 	if err != nil {

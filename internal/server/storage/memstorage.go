@@ -134,3 +134,24 @@ func (storage *MemStorage) GetAllCounter() (map[string]int64, error) {
 
 	return counterCopy, nil
 }
+
+func (storage *MemStorage) UpdateMetrics(metrics []model.Metrics) error {
+	for _, metric := range metrics {
+		switch metric.MType {
+		case string(model.Gauge):
+			err := storage.UpdateGauge(metric.ID, *metric.Value)
+			if err != nil {
+				return err
+			}
+		case string(model.Counter):
+			err := storage.UpdateCounter(metric.ID, *metric.Delta)
+			if err != nil {
+				return err
+			}
+		default:
+			return fmt.Errorf("unknown metric type: %s", metric.MType)
+		}
+	}
+
+	return nil
+}

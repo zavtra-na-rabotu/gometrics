@@ -1,6 +1,10 @@
 package storage
 
-import "errors"
+import (
+	"errors"
+
+	"github.com/zavtra-na-rabotu/gometrics/internal/model"
+)
 
 type Storage interface {
 	UpdateGauge(name string, metric float64) error
@@ -10,6 +14,8 @@ type Storage interface {
 	GetCounter(name string) (int64, error)
 	GetAllGauge() (map[string]float64, error)
 	GetAllCounter() (map[string]int64, error)
+
+	UpdateMetrics([]model.Metrics) error
 }
 
 var ErrItemNotFound = errors.New("item not found")
