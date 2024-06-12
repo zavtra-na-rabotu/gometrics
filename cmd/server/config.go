@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/caarlos0/env/v11"
+	"github.com/zavtra-na-rabotu/gometrics/internal/utils/stringutils"
 	"go.uber.org/zap"
 )
 
@@ -34,7 +35,7 @@ func Configure() {
 	flag.IntVar(&config.storeInterval, "i", defaultStoreInterval, "Store interval in seconds")
 	flag.StringVar(&config.fileStoragePath, "f", defaultFileStoragePath, "File storage path")
 	flag.BoolVar(&config.restore, "r", defaultRestore, "Restore")
-	flag.StringVar(&config.databaseDsn, "d", "postgres://postgres:postgres@localhost:5432/metrics", "Database DSN")
+	flag.StringVar(&config.databaseDsn, "d", "", "Database DSN")
 	flag.Parse()
 
 	envVariables := envs{}
@@ -44,7 +45,7 @@ func Configure() {
 	}
 
 	_, exists := os.LookupEnv("ADDRESS")
-	if exists && envVariables.Address != "" {
+	if exists && !stringutils.IsEmpty(envVariables.Address) {
 		config.serverAddress = envVariables.Address
 	}
 
@@ -54,7 +55,7 @@ func Configure() {
 	}
 
 	_, exists = os.LookupEnv("FILE_STORAGE_PATH")
-	if exists && envVariables.FileStoragePath != "" {
+	if exists && !stringutils.IsEmpty(envVariables.FileStoragePath) {
 		config.fileStoragePath = envVariables.FileStoragePath
 	}
 

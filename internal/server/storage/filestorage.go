@@ -88,8 +88,8 @@ func WriteMetricsToFile(memStorage *MemStorage, fileStoragePath string) error {
 		return fmt.Errorf("could not create file writer: %w", err)
 	}
 
-	gaugeMetrics := memStorage.GetAllGauge()
-	counterMetrics := memStorage.GetAllCounter()
+	gaugeMetrics, _ := memStorage.GetAllGauge()
+	counterMetrics, _ := memStorage.GetAllCounter()
 
 	for name, metric := range gaugeMetrics {
 		err = writer.WriteMetric(model.Metrics{ID: name, MType: string(model.Gauge), Value: &metric})
