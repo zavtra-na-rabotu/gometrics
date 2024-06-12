@@ -111,6 +111,9 @@ func (storage *DBStorage) GetGauge(name string) (float64, error) {
 	var value float64
 	err := storage.DB.QueryRow(`SELECT value FROM gauge WHERE name = $1`, name).Scan(&value)
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return 0, ErrItemNotFound
+		}
 		zap.L().Error("Failed to select gauge metric", zap.Error(err))
 		return 0, err
 	}
@@ -121,6 +124,9 @@ func (storage *DBStorage) GetCounter(name string) (int64, error) {
 	var value int64
 	err := storage.DB.QueryRow(`SELECT value FROM counter WHERE name = $1`, name).Scan(&value)
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return 0, ErrItemNotFound
+		}
 		zap.L().Error("Failed to select counter metric", zap.Error(err))
 		return 0, err
 	}
