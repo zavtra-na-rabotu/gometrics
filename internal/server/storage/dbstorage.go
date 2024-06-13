@@ -4,18 +4,27 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
+	"github.com/jackc/pgerrcode"
+	"github.com/jackc/pgx/v5/pgconn"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/zavtra-na-rabotu/gometrics/internal/model"
 	"go.uber.org/zap"
 )
 
+const maxRetries = 3
+
+var delays = []time.Duration{1 * time.Second, 3 * time.Second, 5 * time.Second}
+
 type DBStorage struct {
 	DB *sql.DB
 }
+
+var ErrRetriesFailed = errors.New("retries failed")
 
 type Repository interface {
 	Ping() error
@@ -68,37 +77,32 @@ func (storage *DBStorage) Ping() error {
 }
 
 func (storage *DBStorage) UpdateGauge(name string, metric float64) error {
-	_, err := storage.DB.Exec(`
+	return storage.retryableExec(`
 		INSERT INTO gauge (name, value) VALUES ($1, $2)
 		ON CONFLICT (name) DO UPDATE SET value = EXCLUDED.value;
 	`, name, metric)
-	if err != nil {
-		zap.L().Error("Failed to update gauge metric", zap.Error(err))
-		return err
-	}
-
-	return err
 }
 
 func (storage *DBStorage) UpdateCounter(name string, metric int64) error {
-	_, err := storage.DB.Exec(`
+	return storage.retryableExec(`
 		INSERT INTO counter (name, value) VALUES ($1, $2)
 		ON CONFLICT (name) DO UPDATE SET value = counter.value + EXCLUDED.value;
 	`, name, metric)
-	if err != nil {
-		zap.L().Error("Failed to update counter metric", zap.Error(err))
-		return err
-	}
-
-	return err
 }
 
 func (storage *DBStorage) UpdateCounterAndReturn(name string, metric int64) (int64, error) {
-	err := storage.DB.QueryRow(`
+	var value int64
+
+	row, err := storage.retryableQueryRow(`
 		INSERT INTO counter (name, value) VALUES ($1, $2)
 		ON CONFLICT (name) DO UPDATE SET value = counter.value + EXCLUDED.value
 		RETURNING value;
-	`, name, metric).Scan(&metric)
+	`, name, metric)
+	if err != nil {
+		return 0, err
+	}
+
+	err = row.Scan(&value)
 	if err != nil {
 		zap.L().Error("Failed to update and return counter metric", zap.Error(err))
 		return 0, err
@@ -109,7 +113,11 @@ func (storage *DBStorage) UpdateCounterAndReturn(name string, metric int64) (int
 
 func (storage *DBStorage) GetGauge(name string) (float64, error) {
 	var value float64
-	err := storage.DB.QueryRow(`SELECT value FROM gauge WHERE name = $1`, name).Scan(&value)
+	row, err := storage.retryableQueryRow(`SELECT value FROM gauge WHERE name = $1`, name)
+	if err != nil {
+		return 0, err
+	}
+	err = row.Scan(&value)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return 0, ErrItemNotFound
@@ -117,12 +125,17 @@ func (storage *DBStorage) GetGauge(name string) (float64, error) {
 		zap.L().Error("Failed to select gauge metric", zap.Error(err))
 		return 0, err
 	}
+
 	return value, nil
 }
 
 func (storage *DBStorage) GetCounter(name string) (int64, error) {
 	var value int64
-	err := storage.DB.QueryRow(`SELECT value FROM counter WHERE name = $1`, name).Scan(&value)
+	row, err := storage.retryableQueryRow(`SELECT value FROM counter WHERE name = $1`, name)
+	if err != nil {
+		return 0, err
+	}
+	err = row.Scan(&value)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return 0, ErrItemNotFound
@@ -130,11 +143,12 @@ func (storage *DBStorage) GetCounter(name string) (int64, error) {
 		zap.L().Error("Failed to select counter metric", zap.Error(err))
 		return 0, err
 	}
+
 	return value, nil
 }
 
 func (storage *DBStorage) GetAllGauge() (map[string]float64, error) {
-	rows, err := storage.DB.Query(`SELECT name, value FROM gauge`)
+	rows, err := storage.retryableQuery(`SELECT name, value FROM gauge`)
 	if err != nil {
 		zap.L().Error("Failed to get all gauge metrics")
 		return nil, err
@@ -163,7 +177,7 @@ func (storage *DBStorage) GetAllGauge() (map[string]float64, error) {
 }
 
 func (storage *DBStorage) GetAllCounter() (map[string]int64, error) {
-	rows, err := storage.DB.Query(`SELECT name, value FROM counter`)
+	rows, err := storage.retryableQuery(`SELECT name, value FROM counter`)
 	if err != nil {
 		zap.L().Error("Failed to get all counter metrics")
 		return nil, err
@@ -258,4 +272,80 @@ func updateCounterInTransaction(tx *sql.Tx, name string, metric int64) error {
 	}
 
 	return err
+}
+
+// isNetworkError Only Class 08 — Connection Exception
+func isNetworkError(err error) bool {
+	var pgError *pgconn.PgError
+	if errors.As(err, &pgError) {
+		switch pgError.Code {
+		case pgerrcode.ConnectionException,
+			pgerrcode.ConnectionDoesNotExist,
+			pgerrcode.ConnectionFailure,
+			pgerrcode.SQLClientUnableToEstablishSQLConnection,
+			pgerrcode.SQLServerRejectedEstablishmentOfSQLConnection,
+			pgerrcode.TransactionResolutionUnknown,
+			pgerrcode.ProtocolViolation:
+			return true
+		}
+	}
+	return false
+}
+
+func (storage *DBStorage) retryableExec(query string, args ...interface{}) error {
+	for i, delay := range delays {
+		zap.L().Info("Trying to execute Exec", zap.Int("Retry count", i))
+		_, err := storage.DB.Exec(query, args...)
+		if err == nil {
+			return nil
+		}
+		if !isNetworkError(err) || i == maxRetries-1 {
+			zap.L().Error("Failed to execute Exec", zap.Error(err))
+			return err
+		}
+		time.Sleep(delay)
+	}
+
+	return ErrRetriesFailed
+}
+
+func (storage *DBStorage) retryableQueryRow(query string, args ...interface{}) (*sql.Row, error) {
+	for i, delay := range delays {
+		zap.L().Info("Trying to execute QueryRow", zap.Int("Retry count", i))
+
+		row := storage.DB.QueryRow(query, args...)
+		err := row.Err()
+		if err == nil {
+			return row, nil
+		}
+
+		if !isNetworkError(err) || i == maxRetries-1 {
+			zap.L().Error("Failed to execute QueryRow", zap.Error(err))
+			return nil, err
+		}
+
+		time.Sleep(delay)
+	}
+
+	return nil, ErrRetriesFailed
+}
+
+func (storage *DBStorage) retryableQuery(query string, args ...interface{}) (*sql.Rows, error) {
+	for i, delay := range delays {
+		zap.L().Info("Trying to execute Query", zap.Int("Retry count", i))
+
+		rows, err := storage.DB.Query(query, args...)
+		if err == nil {
+			return rows, nil
+		}
+
+		if !isNetworkError(err) || i == maxRetries-1 {
+			zap.L().Error("Failed to execute Query", zap.Error(err))
+			return nil, err
+		}
+
+		time.Sleep(delay)
+	}
+
+	return nil, ErrRetriesFailed
 }
