@@ -25,6 +25,7 @@ type DBStorage struct {
 }
 
 var ErrRetriesFailed = errors.New("retries failed")
+var ErrMigrationsFailed = errors.New("migrations failed")
 
 type Repository interface {
 	Ping() error
@@ -41,19 +42,19 @@ func NewDBStorage(databaseDsn string) (*DBStorage, error) {
 func (storage *DBStorage) RunMigrations() error {
 	driver, err := postgres.WithInstance(storage.DB, &postgres.Config{})
 	if err != nil {
-		zap.L().Fatal("Failed to create migration driver", zap.Error(err))
-		return err
+		zap.L().Info("Failed to create migration driver", zap.Error(err))
+		return ErrMigrationsFailed
 	}
 
 	migration, err := migrate.NewWithDatabaseInstance("file://internal/server/storage/migrations", "public", driver)
 	if err != nil {
-		zap.L().Fatal("Failed to create migrate instance", zap.Error(err))
-		return err
+		zap.L().Info("Failed to create migrate instance", zap.Error(err))
+		return ErrMigrationsFailed
 	}
 	err = migration.Up()
 	if err != nil && !errors.Is(err, migrate.ErrNoChange) {
-		zap.L().Fatal("Failed to run migrations", zap.Error(err))
-		return err
+		zap.L().Info("Failed to run migrations", zap.Error(err))
+		return ErrMigrationsFailed
 	}
 
 	if errors.Is(err, migrate.ErrNoChange) {
@@ -68,7 +69,7 @@ func (storage *DBStorage) RunMigrations() error {
 func (storage *DBStorage) Close() {
 	err := storage.DB.Close()
 	if err != nil {
-		zap.L().Fatal("Failed to close database", zap.Error(err))
+		zap.L().Info("Failed to close database", zap.Error(err))
 	}
 }
 
