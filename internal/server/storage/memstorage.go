@@ -111,7 +111,7 @@ func (storage *MemStorage) GetCounter(name string) (int64, error) {
 	return value, nil
 }
 
-func (storage *MemStorage) GetAllGauge() map[string]float64 {
+func (storage *MemStorage) GetAllGauge() (map[string]float64, error) {
 	storage.gaugeLock.RLock()
 	defer storage.gaugeLock.RUnlock()
 
@@ -120,10 +120,10 @@ func (storage *MemStorage) GetAllGauge() map[string]float64 {
 		gaugeCopy[key] = value
 	}
 
-	return gaugeCopy
+	return gaugeCopy, nil
 }
 
-func (storage *MemStorage) GetAllCounter() map[string]int64 {
+func (storage *MemStorage) GetAllCounter() (map[string]int64, error) {
 	storage.counterLock.RLock()
 	defer storage.counterLock.RUnlock()
 
@@ -132,5 +132,26 @@ func (storage *MemStorage) GetAllCounter() map[string]int64 {
 		counterCopy[key] = value
 	}
 
-	return counterCopy
+	return counterCopy, nil
+}
+
+func (storage *MemStorage) UpdateMetrics(metrics []model.Metrics) error {
+	for _, metric := range metrics {
+		switch metric.MType {
+		case string(model.Gauge):
+			err := storage.UpdateGauge(metric.ID, *metric.Value)
+			if err != nil {
+				return err
+			}
+		case string(model.Counter):
+			err := storage.UpdateCounter(metric.ID, *metric.Delta)
+			if err != nil {
+				return err
+			}
+		default:
+			return fmt.Errorf("unknown metric type: %s", metric.MType)
+		}
+	}
+
+	return nil
 }

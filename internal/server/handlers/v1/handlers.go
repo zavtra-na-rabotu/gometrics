@@ -135,7 +135,7 @@ func UpdateMetric(st storage.Storage) http.HandlerFunc {
 	}
 }
 
-func RenderAllMetrics(st *storage.MemStorage) http.HandlerFunc {
+func RenderAllMetrics(st storage.Storage) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 
@@ -149,7 +149,13 @@ func RenderAllMetrics(st *storage.MemStorage) http.HandlerFunc {
 
 		var allMetrics []MetricResponse
 
-		for name, metric := range st.GetAllGauge() {
+		gaugeMetrics, err := st.GetAllGauge()
+		if err != nil {
+			zap.L().Error("Error while getting gauge metrics", zap.Error(err))
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		for name, metric := range gaugeMetrics {
 			allMetrics = append(allMetrics, MetricResponse{
 				MetricType:  model.Gauge,
 				MetricName:  name,
@@ -157,7 +163,13 @@ func RenderAllMetrics(st *storage.MemStorage) http.HandlerFunc {
 			})
 		}
 
-		for name, metric := range st.GetAllCounter() {
+		counterMetrics, err := st.GetAllCounter()
+		if err != nil {
+			zap.L().Error("Error while getting counter metrics", zap.Error(err))
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		for name, metric := range counterMetrics {
 			allMetrics = append(allMetrics, MetricResponse{
 				MetricType:  model.Counter,
 				MetricName:  name,
