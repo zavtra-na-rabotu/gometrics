@@ -21,6 +21,10 @@ func main() {
 	r := chi.NewRouter()
 	r.Use(middleware.RequestLoggerMiddleware)
 	r.Use(middleware.GzipMiddleware)
+	if config.key != "" {
+		r.Use(middleware.RequestHashMiddleware(config.key))
+		r.Use(middleware.ResponseHashMiddleware(config.key))
+	}
 
 	var storageToUse storage.Storage
 

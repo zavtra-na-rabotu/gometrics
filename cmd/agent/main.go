@@ -16,7 +16,7 @@ func main() {
 	// FIXME: "http://"...
 	client := resty.New().SetBaseURL("http://" + config.serverAddress)
 	metricsCollector := metrics.NewCollector()
-	metricsSender := metrics.NewSender(client, metricsCollector)
+	metricsSender := metrics.NewSender(client, metricsCollector, config.key)
 
 	collectTicker := time.NewTicker(time.Duration(config.pollInterval) * time.Second)
 	senderTicker := time.NewTicker(time.Duration(config.reportInterval) * time.Second)

@@ -12,17 +12,19 @@ import (
 var config struct {
 	serverAddress   string
 	fileStoragePath string
+	databaseDsn     string
+	key             string
 	storeInterval   int
 	restore         bool
-	databaseDsn     string
 }
 
 type envs struct {
 	Address         string `env:"ADDRESS"`
 	FileStoragePath string `env:"FILE_STORAGE_PATH"`
+	DatabaseDsn     string `env:"DATABASE_DSN"`
+	Key             string `env:"KEY"`
 	StoreInterval   int    `env:"STORE_INTERVAL"`
 	Restore         bool   `env:"RESTORE"`
-	DatabaseDsn     string `env:"DATABASE_DSN"`
 }
 
 // Configure TODO: Move to internal.
@@ -36,6 +38,7 @@ func Configure() {
 	flag.StringVar(&config.fileStoragePath, "f", defaultFileStoragePath, "File storage path")
 	flag.BoolVar(&config.restore, "r", defaultRestore, "Restore")
 	flag.StringVar(&config.databaseDsn, "d", "", "Database DSN")
+	flag.StringVar(&config.key, "k", "", "Key")
 	flag.Parse()
 
 	envVariables := envs{}
@@ -67,5 +70,10 @@ func Configure() {
 	_, exists = os.LookupEnv("DATABASE_DSN")
 	if exists {
 		config.databaseDsn = envVariables.DatabaseDsn
+	}
+
+	_, exists = os.LookupEnv("KEY")
+	if exists {
+		config.key = envVariables.Key
 	}
 }

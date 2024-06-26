@@ -3,6 +3,9 @@ package metrics
 import (
 	"bytes"
 	"compress/gzip"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -16,12 +19,14 @@ import (
 type Sender struct {
 	client  *resty.Client
 	metrics *Collector
+	key     string
 }
 
-func NewSender(client *resty.Client, metrics *Collector) *Sender {
+func NewSender(client *resty.Client, metrics *Collector, key string) *Sender {
 	return &Sender{
 		client:  client,
 		metrics: metrics,
+		key:     key,
 	}
 }
 
@@ -37,17 +42,29 @@ func (sender *Sender) Send() error {
 		metrics = append(metrics, counterMetric)
 	}
 
-	return sendMetrics(sender.client, metrics)
+	return sendMetrics(sender.client, metrics, sender.key)
 }
 
-func sendMetrics(client *resty.Client, metrics []model.Metrics) error {
+func sendMetrics(client *resty.Client, metrics []model.Metrics, key string) error {
+	jsonData, err := json.Marshal(metrics)
+	if err != nil {
+		log.Fatalf("Error marshalling JSON: %v", err)
+	}
+
 	var compressedBody bytes.Buffer
-	err := compressBody(&compressedBody, metrics)
+	err = compressBody(&compressedBody, jsonData)
 	if err != nil {
 		return fmt.Errorf("failed to compress metrics: %w", err)
 	}
 
-	response, err := client.R().
+	request := client.R()
+
+	if key != "" {
+		var hash = calculateHash(jsonData, key)
+		request.SetHeader("HashSHA256", hash)
+	}
+
+	response, err := request.
 		SetHeader("Content-Encoding", "gzip").
 		SetHeader("Content-Type", "application/json").
 		SetBody(compressedBody.Bytes()).
@@ -62,14 +79,9 @@ func sendMetrics(client *resty.Client, metrics []model.Metrics) error {
 	return nil
 }
 
-func compressBody(compressedData *bytes.Buffer, metrics []model.Metrics) error {
-	jsonData, err := json.Marshal(metrics)
-	if err != nil {
-		log.Fatalf("Error marshalling JSON: %v", err)
-	}
-
+func compressBody(compressedData *bytes.Buffer, jsonData []byte) error {
 	gzipWriter := gzip.NewWriter(compressedData)
-	_, err = gzipWriter.Write(jsonData)
+	_, err := gzipWriter.Write(jsonData)
 	if err != nil {
 		zap.L().Error("Error compressing data", zap.Error(err))
 		return fmt.Errorf("error compressing data: %w", err)
@@ -80,4 +92,10 @@ func compressBody(compressedData *bytes.Buffer, metrics []model.Metrics) error {
 	}
 
 	return nil
+}
+
+func calculateHash(jsonData []byte, key string) string {
+	hash := hmac.New(sha256.New, []byte(key))
+	hash.Write(jsonData)
+	return hex.EncodeToString(hash.Sum(nil))
 }
