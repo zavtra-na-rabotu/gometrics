@@ -52,7 +52,6 @@ func (sender *Sender) worker(id int, jobs <-chan []model.Metrics, wg *sync.WaitG
 
 func (sender *Sender) InitSender() {
 	sendJobs := make(chan []model.Metrics, sender.rateLimit)
-	defer close(sendJobs)
 
 	var wg sync.WaitGroup
 	for i := 1; i <= sender.rateLimit; i++ {
@@ -67,6 +66,7 @@ func (sender *Sender) InitSender() {
 		zap.L().Info("Sending metrics")
 		metric, ok := <-sender.collector.metrics
 		if !ok {
+			close(sendJobs)
 			wg.Wait()
 			return
 		}
