@@ -67,7 +67,6 @@ func (sender *Sender) InitSender() {
 		zap.L().Info("Sending metrics")
 		metric, ok := <-sender.collector.metrics
 		if !ok {
-			close(sendJobs)
 			wg.Wait()
 			return
 		}
