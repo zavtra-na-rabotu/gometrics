@@ -60,21 +60,18 @@ func (sender *Sender) InitSender() {
 		go sender.worker(i, sendJobs, &wg)
 	}
 
-	senderTicker := time.NewTicker(sender.reportInterval)
-	defer senderTicker.Stop()
+	ticker := time.NewTicker(sender.reportInterval)
+	defer ticker.Stop()
 
-	for {
-		select {
-		case <-senderTicker.C:
-			zap.L().Info("Sending metrics")
-			metric, ok := <-sender.collector.metrics
-			if !ok {
-				close(sendJobs)
-				wg.Wait()
-				return
-			}
-			sendJobs <- metric
+	for range ticker.C {
+		zap.L().Info("Sending metrics")
+		metric, ok := <-sender.collector.metrics
+		if !ok {
+			close(sendJobs)
+			wg.Wait()
+			return
 		}
+		sendJobs <- metric
 	}
 }
 

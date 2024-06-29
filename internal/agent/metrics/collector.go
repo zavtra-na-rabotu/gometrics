@@ -44,30 +44,27 @@ func (collector *Collector) InitCollector() {
 	ticker := time.NewTicker(collector.pollInterval)
 	defer ticker.Stop()
 
-	for {
-		select {
-		case <-ticker.C:
-			collector.CollectGaugeMetrics()
-			collector.CollectCounterMetrics()
+	for range ticker.C {
+		collector.CollectGaugeMetrics()
+		collector.CollectCounterMetrics()
 
-			metrics := collector.CreateMetrics()
+		metrics := collector.CreateMetrics()
+
+		select {
+		case collector.metrics <- metrics:
+		default:
+			select {
+			case <-collector.metrics:
+				zap.L().Info("Cleared old metrics from channel")
+			default:
+				// Channel is empty
+			}
 
 			select {
 			case collector.metrics <- metrics:
+				zap.L().Info("Sent new metrics after clearing")
 			default:
-				select {
-				case <-collector.metrics:
-					zap.L().Info("Cleared old metrics from channel")
-				default:
-					// Channel is empty
-				}
-
-				select {
-				case collector.metrics <- metrics:
-					zap.L().Info("Sent new metrics after clearing")
-				default:
-					// Channel still blocked
-				}
+				// Channel still blocked
 			}
 		}
 	}
@@ -77,11 +74,8 @@ func (collector *Collector) InitPsutilCollector() {
 	ticker := time.NewTicker(collector.pollInterval)
 	defer ticker.Stop()
 
-	for {
-		select {
-		case <-ticker.C:
-			collector.CollectPsutilMetrics()
-		}
+	for range ticker.C {
+		collector.CollectPsutilMetrics()
 	}
 }
 
