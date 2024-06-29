@@ -36,14 +36,14 @@ func NewSender(url string, key string, rateLimit int, reportInterval int, collec
 }
 
 func (sender *Sender) worker(id int, jobs <-chan []model.Metrics, wg *sync.WaitGroup) {
-	zap.L().Info("Starting worker", zap.Int("Goroutine id", id))
+	zap.L().Info("Starting worker", zap.Int("Worker id", id))
 	defer wg.Done()
 
 	for metrics := range jobs {
 		//zap.L().Info("Sending metrics", zap.Any("metrics", metrics))
 		err := sender.sendMetrics(metrics)
 		if err != nil {
-			zap.L().Error("Error sending metrics", zap.Error(err), zap.Int("Goroutine id", id))
+			zap.L().Error("Error sending metrics", zap.Error(err), zap.Int("Worker id", id))
 		} else {
 			sender.collector.ResetPollCounter()
 		}
