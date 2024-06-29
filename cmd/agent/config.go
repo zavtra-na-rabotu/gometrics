@@ -13,6 +13,7 @@ var config struct {
 	key            string
 	reportInterval int
 	pollInterval   int
+	rateLimit      int
 }
 
 type envs struct {
@@ -20,6 +21,7 @@ type envs struct {
 	Key            string `env:"KEY"`
 	ReportInterval int    `env:"REPORT_INTERVAL"`
 	PollInterval   int    `env:"POLL_INTERVAL"`
+	RateLimit      int    `env:"RATE_LIMIT"`
 }
 
 // Configure TODO: Move to internal.
@@ -31,6 +33,7 @@ func Configure() {
 	flag.IntVar(&config.reportInterval, "r", defaultReportInterval, "Report interval in seconds")
 	flag.IntVar(&config.pollInterval, "p", defaultPollInterval, "Poll interval in seconds")
 	flag.StringVar(&config.key, "k", "", "Key")
+	flag.IntVar(&config.rateLimit, "l", 1, "Rate limit")
 	flag.Parse()
 
 	envVariables := envs{}
@@ -57,5 +60,10 @@ func Configure() {
 	_, exists = os.LookupEnv("KEY")
 	if exists {
 		config.key = envVariables.Key
+	}
+
+	_, exists = os.LookupEnv("RATE_LIMIT")
+	if exists && envVariables.RateLimit != 0 {
+		config.rateLimit = envVariables.RateLimit
 	}
 }
