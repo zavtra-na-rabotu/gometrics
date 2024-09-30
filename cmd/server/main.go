@@ -1,9 +1,8 @@
 package main
 
 import (
-	"net/http"
-
 	"github.com/go-chi/chi/v5"
+	middleware2 "github.com/go-chi/chi/v5/middleware"
 	"github.com/zavtra-na-rabotu/gometrics/internal/logger"
 	v1 "github.com/zavtra-na-rabotu/gometrics/internal/server/handlers/v1"
 	v2 "github.com/zavtra-na-rabotu/gometrics/internal/server/handlers/v2"
@@ -12,6 +11,7 @@ import (
 	"github.com/zavtra-na-rabotu/gometrics/internal/server/storage"
 	"github.com/zavtra-na-rabotu/gometrics/internal/utils/stringutils"
 	"go.uber.org/zap"
+	"net/http"
 )
 
 func main() {
@@ -67,6 +67,8 @@ func main() {
 	// API v3
 	r.Get("/ping", v3.Ping(storageToUse))
 	r.Post("/updates/", v3.UpdateMetrics(storageToUse))
+
+	r.Mount("/debug", middleware2.Profiler())
 
 	err := http.ListenAndServe(config.serverAddress, r)
 	if err != nil {
