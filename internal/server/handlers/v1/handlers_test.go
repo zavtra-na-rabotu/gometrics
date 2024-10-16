@@ -1,106 +1,211 @@
 package v1
 
 import (
-	"fmt"
+	"errors"
+	"github.com/golang/mock/gomock"
+	mock_storage "github.com/zavtra-na-rabotu/gometrics/internal/mocks"
+	"github.com/zavtra-na-rabotu/gometrics/internal/model"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-	"github.com/zavtra-na-rabotu/gometrics/internal/server/storage"
 )
 
-func TestUpdateMetricHandler(t *testing.T) {
+func TestUpdateMetric_Common(t *testing.T) {
 	type want struct {
 		contentType string
 		statusCode  int
 	}
 
-	type request struct {
-		metricType  string
-		metricName  string
-		metricValue string
+	type storageReturn struct {
+		err error
 	}
 
+	testValue := int64(12)
+
 	tests := []struct {
-		name    string
-		arg     storage.Storage
-		request request
-		want    want
+		name          string
+		request       model.Metrics
+		storageReturn storageReturn
+		want
 	}{
 		{
-			name: "Positive scenario. Gauge metric (200)",
-			arg:  storage.NewMemStorage(),
+			name:          "No name provided",
+			request:       model.Metrics{ID: "", Delta: &testValue, MType: "counter"},
+			storageReturn: storageReturn{nil},
 			want: want{
 				contentType: "text/plain; charset=utf-8",
-				statusCode:  http.StatusOK,
-			},
-			request: request{
-				metricType:  "gauge",
-				metricName:  "test",
-				metricValue: "28.0",
-			},
-		},
-		{
-			name: "Positive scenario. Counter metric (200)",
-			arg:  storage.NewMemStorage(),
-			want: want{
-				contentType: "text/plain; charset=utf-8",
-				statusCode:  http.StatusOK,
-			},
-			request: request{
-				metricType:  "counter",
-				metricName:  "test",
-				metricValue: "28",
-			},
-		},
-		{
-			name: "Negative scenario. No type provided (400)",
-			arg:  storage.NewMemStorage(),
-			want: want{
-				contentType: "",
-				statusCode:  http.StatusBadRequest,
-			},
-			request: request{
-				metricType:  "wrong",
-				metricName:  "test",
-				metricValue: "28.0",
-			},
-		},
-		{
-			name: "Negative scenario. No name provided (404)",
-			arg:  storage.NewMemStorage(),
-			want: want{
-				contentType: "",
 				statusCode:  http.StatusNotFound,
 			},
-			request: request{
-				metricType:  "gauge",
-				metricName:  "",
-				metricValue: "28.0",
+		},
+		{
+			name:          "No type provided",
+			request:       model.Metrics{ID: "Whatever metric", Delta: &testValue, MType: ""},
+			storageReturn: storageReturn{errors.New("some error")},
+			want: want{
+				contentType: "text/plain; charset=utf-8",
+				statusCode:  http.StatusBadRequest,
 			},
 		},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			url := fmt.Sprintf("/update/%s/%s/%s", test.request.metricType, test.request.metricName, test.request.metricValue)
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
 
-			request := httptest.NewRequest(http.MethodPost, url, http.NoBody)
-			request.SetPathValue("type", test.request.metricType)
-			request.SetPathValue("name", test.request.metricName)
-			request.SetPathValue("value", test.request.metricValue)
+			// Create generated mock
+			mockStorage := mock_storage.NewMockStorage(ctrl)
+
+			// Create request
+			request := httptest.NewRequest(http.MethodPost, "/update/", http.NoBody)
+			request.SetPathValue("type", test.request.MType)
+			request.SetPathValue("name", test.request.ID)
+			request.SetPathValue("value", strconv.FormatInt(*test.request.Delta, 10))
 
 			responseRecorder := httptest.NewRecorder()
-			handler := UpdateMetric(test.arg)
+
+			handler := UpdateMetric(mockStorage)
 			handler(responseRecorder, request)
 
 			result := responseRecorder.Result()
 			err := result.Body.Close()
-			require.NoError(t, err)
 
-			assert.Equal(t, test.want.statusCode, result.StatusCode)
-			assert.Equal(t, test.want.contentType, result.Header.Get("Content-Type"))
+			assert.NoError(t, err)
+			assert.Equal(t, test.want.statusCode, responseRecorder.Code)
+		})
+	}
+}
+
+func TestUpdateMetric_Counter(t *testing.T) {
+	type want struct {
+		contentType string
+		statusCode  int
+	}
+
+	type storageReturn struct {
+		err error
+	}
+
+	testValue := int64(12)
+
+	tests := []struct {
+		name          string
+		request       model.Metrics
+		storageReturn storageReturn
+		want
+	}{
+		{
+			name:          "Positive scenario. Counter metric (200)",
+			request:       model.Metrics{ID: "Counter metric", Delta: &testValue, MType: "counter"},
+			storageReturn: storageReturn{nil},
+			want: want{
+				contentType: "text/plain; charset=utf-8",
+				statusCode:  http.StatusOK,
+			},
+		},
+		{
+			name:          "Negative scenario. Counter metric (500)",
+			request:       model.Metrics{ID: "Counter metric", Delta: &testValue, MType: "counter"},
+			storageReturn: storageReturn{errors.New("some error")},
+			want: want{
+				contentType: "text/plain; charset=utf-8",
+				statusCode:  http.StatusInternalServerError,
+			},
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+
+			// Create generated mock
+			mockStorage := mock_storage.NewMockStorage(ctrl)
+			mockStorage.EXPECT().UpdateCounter(test.request.ID, *test.request.Delta).Return(test.storageReturn.err)
+
+			// Create request
+			request := httptest.NewRequest(http.MethodPost, "/update/", http.NoBody)
+			request.SetPathValue("type", test.request.MType)
+			request.SetPathValue("name", test.request.ID)
+			request.SetPathValue("value", strconv.FormatInt(*test.request.Delta, 10))
+
+			responseRecorder := httptest.NewRecorder()
+
+			handler := UpdateMetric(mockStorage)
+			handler(responseRecorder, request)
+
+			result := responseRecorder.Result()
+			err := result.Body.Close()
+
+			assert.NoError(t, err)
+			assert.Equal(t, test.want.statusCode, responseRecorder.Code)
+		})
+	}
+}
+
+func TestUpdateMetric_Gauge(t *testing.T) {
+	type want struct {
+		contentType string
+		statusCode  int
+	}
+
+	type storageReturn struct {
+		err error
+	}
+
+	testValue := 23.4
+
+	tests := []struct {
+		name          string
+		request       model.Metrics
+		storageReturn storageReturn
+		want
+	}{
+		{
+			name:          "Positive scenario. Gauge metric (200)",
+			request:       model.Metrics{ID: "Gauge metric", Value: &testValue, MType: "gauge"},
+			storageReturn: storageReturn{nil},
+			want: want{
+				contentType: "text/plain; charset=utf-8",
+				statusCode:  http.StatusOK,
+			},
+		},
+		{
+			name:          "Negative scenario. Gauge metric (500)",
+			request:       model.Metrics{ID: "Gauge metric", Value: &testValue, MType: "gauge"},
+			storageReturn: storageReturn{errors.New("some error")},
+			want: want{
+				contentType: "text/plain; charset=utf-8",
+				statusCode:  http.StatusInternalServerError,
+			},
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+
+			// Create generated mock
+			mockStorage := mock_storage.NewMockStorage(ctrl)
+			mockStorage.EXPECT().UpdateGauge(test.request.ID, *test.request.Value).Return(test.storageReturn.err)
+
+			// Create request
+			request := httptest.NewRequest(http.MethodPost, "/update/", http.NoBody)
+			request.SetPathValue("type", test.request.MType)
+			request.SetPathValue("name", test.request.ID)
+			request.SetPathValue("value", strconv.FormatFloat(*test.request.Value, 'f', -1, 64))
+
+			responseRecorder := httptest.NewRecorder()
+
+			handler := UpdateMetric(mockStorage)
+			handler(responseRecorder, request)
+
+			result := responseRecorder.Result()
+			err := result.Body.Close()
+
+			assert.NoError(t, err)
+			assert.Equal(t, test.want.statusCode, responseRecorder.Code)
 		})
 	}
 }
