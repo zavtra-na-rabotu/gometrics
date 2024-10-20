@@ -4,13 +4,14 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
-	"github.com/golang/mock/gomock"
-	"github.com/stretchr/testify/assert"
-	"github.com/zavtra-na-rabotu/gometrics/internal/mocks"
-	"github.com/zavtra-na-rabotu/gometrics/internal/model"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/golang/mock/gomock"
+	"github.com/stretchr/testify/assert"
+	mock_storage "github.com/zavtra-na-rabotu/gometrics/internal/mocks"
+	"github.com/zavtra-na-rabotu/gometrics/internal/model"
 )
 
 func TestUpdateMetrics(t *testing.T) {

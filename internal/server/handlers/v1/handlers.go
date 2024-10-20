@@ -19,7 +19,6 @@ type MetricResponse struct {
 	MetricValue string
 }
 
-// GetMetric TODO: What to do if variable name and package name are the same ? Only aliases ?
 func GetMetric(st storage.Storage) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		metricType := model.MetricType(r.PathValue("type"))

@@ -1,23 +1,24 @@
 package main
 
 import (
+	"github.com/zavtra-na-rabotu/gometrics/internal/agent/configuration"
 	"github.com/zavtra-na-rabotu/gometrics/internal/agent/metrics"
 	"github.com/zavtra-na-rabotu/gometrics/internal/logger"
 	"github.com/zavtra-na-rabotu/gometrics/internal/model"
 )
 
 func main() {
+	config := configuration.Configure()
 	logger.InitLogger()
-	Configure()
 
 	metricsChan := make(chan []model.Metrics)
 	defer close(metricsChan)
 
-	metricsCollector := metrics.NewCollector(config.pollInterval, metricsChan)
+	metricsCollector := metrics.NewCollector(config.PollInterval, metricsChan)
 	go metricsCollector.InitCollector()
 	go metricsCollector.InitPsutilCollector()
 
-	metricsSender := metrics.NewSender(config.serverAddress, config.key, config.rateLimit, config.reportInterval, metricsCollector)
+	metricsSender := metrics.NewSender(config.ServerAddress, config.Key, config.RateLimit, config.ReportInterval, metricsCollector)
 	go metricsSender.InitSender()
 
 	select {}

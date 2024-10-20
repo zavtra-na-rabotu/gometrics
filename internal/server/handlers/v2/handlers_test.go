@@ -5,14 +5,15 @@ import (
 	"compress/gzip"
 	"encoding/json"
 	"errors"
-	"github.com/golang/mock/gomock"
-	"github.com/stretchr/testify/assert"
-	"github.com/zavtra-na-rabotu/gometrics/internal/mocks"
-	"github.com/zavtra-na-rabotu/gometrics/internal/model"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/golang/mock/gomock"
+	"github.com/stretchr/testify/assert"
+	mock_storage "github.com/zavtra-na-rabotu/gometrics/internal/mocks"
+	"github.com/zavtra-na-rabotu/gometrics/internal/model"
 
 	"github.com/stretchr/testify/require"
 	"github.com/zavtra-na-rabotu/gometrics/internal/server/middleware"
@@ -111,7 +112,7 @@ func TestUpdateMetric_Counter(t *testing.T) {
 	}{
 		{
 			name:          "Positive scenario. Counter metric (200)",
-			request:       model.Metrics{ID: "Counter metric", Delta: &testDelta, MType: "counter"},
+			request:       model.Metrics{ID: "Counter metric", Delta: &testDelta, MType: string(model.Counter)},
 			storageReturn: storageReturn{12, nil},
 			want: want{
 				contentType: "text/plain; charset=utf-8",
@@ -120,7 +121,7 @@ func TestUpdateMetric_Counter(t *testing.T) {
 		},
 		{
 			name:          "Negative scenario. Gauge metric (500)",
-			request:       model.Metrics{ID: "Counter metric", Delta: &testDelta, MType: "counter"},
+			request:       model.Metrics{ID: "Counter metric", Delta: &testDelta, MType: string(model.Counter)},
 			storageReturn: storageReturn{0, errors.New("some error")},
 			want: want{
 				contentType: "text/plain; charset=utf-8",
@@ -177,7 +178,7 @@ func TestUpdateMetric_Gauge(t *testing.T) {
 	}{
 		{
 			name:          "Positive scenario. Gauge metric (200)",
-			request:       model.Metrics{ID: "Gauge metric", Value: &testValue, MType: "gauge"},
+			request:       model.Metrics{ID: "Gauge metric", Value: &testValue, MType: string(model.Gauge)},
 			storageReturn: storageReturn{nil},
 			want: want{
 				contentType: "text/plain; charset=utf-8",
@@ -186,7 +187,7 @@ func TestUpdateMetric_Gauge(t *testing.T) {
 		},
 		{
 			name:          "Negative scenario. Gauge metric (500)",
-			request:       model.Metrics{ID: "Gauge metric", Value: &testValue, MType: "gauge"},
+			request:       model.Metrics{ID: "Gauge metric", Value: &testValue, MType: string(model.Gauge)},
 			storageReturn: storageReturn{errors.New("some error")},
 			want: want{
 				contentType: "text/plain; charset=utf-8",
@@ -244,7 +245,7 @@ func TestGetMetric_Counter(t *testing.T) {
 	}{
 		{
 			name:          "Positive scenario. Counter metric (200)",
-			request:       model.Metrics{ID: "Counter metric", Delta: &testDelta, MType: "counter"},
+			request:       model.Metrics{ID: "Counter metric", Delta: &testDelta, MType: string(model.Counter)},
 			storageReturn: storageReturn{testDelta, nil},
 			want: want{
 				contentType: "text/plain; charset=utf-8",
@@ -300,7 +301,7 @@ func TestGetMetric_Gauge(t *testing.T) {
 	}{
 		{
 			name:          "Positive scenario. Gauge metric (200)",
-			request:       model.Metrics{ID: "Gauge metric", Value: &testValue, MType: "gauge"},
+			request:       model.Metrics{ID: "Gauge metric", Value: &testValue, MType: string(model.Gauge)},
 			storageReturn: storageReturn{testValue, nil},
 			want: want{
 				contentType: "text/plain; charset=utf-8",

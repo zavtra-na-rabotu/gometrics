@@ -1,14 +1,15 @@
 package metrics
 
 import (
-	"github.com/shirou/gopsutil/v4/cpu"
-	"github.com/zavtra-na-rabotu/gometrics/internal/model"
-	"go.uber.org/zap"
 	"math/rand/v2"
 	"runtime"
 	"strconv"
 	"sync"
 	"time"
+
+	"github.com/shirou/gopsutil/v4/cpu"
+	"github.com/zavtra-na-rabotu/gometrics/internal/model"
+	"go.uber.org/zap"
 
 	"github.com/shirou/gopsutil/v4/mem"
 )
