@@ -245,10 +245,6 @@ func (storage *DBStorage) UpdateMetrics(metrics []model.Metrics) error {
 	return nil
 }
 
-/*
-TODO: Я бы очень хотел написать враппер над уже существующими методами выше, но не понимаю как
-TODO: Если первым аргументом я везде добавлю Tx, то нарушу сигнатуру метода основного интерфейса Storage
-*/
 func updateGaugeInTransaction(tx *sql.Tx, name string, metric float64) error {
 	_, err := tx.Exec(`
 		INSERT INTO gauge (name, value) VALUES ($1, $2)
