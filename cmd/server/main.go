@@ -31,7 +31,6 @@ func main() {
 
 	var storageToUse storage.Storage
 
-	// TODO: Выглядит плохо, но я пока не знаю как лучше
 	if !stringutils.IsEmpty(config.DatabaseDsn) {
 		zap.L().Info("Using database storage")
 

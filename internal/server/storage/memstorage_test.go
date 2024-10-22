@@ -30,18 +30,21 @@ func TestMemStorage_GetGauge_NotFound(t *testing.T) {
 func TestMemStorage_GetAllGauge(t *testing.T) {
 	storage := NewMemStorage()
 
-	err := storage.UpdateGauge("gauge1", 10.1)
+	expectedGauge1 := 10.1
+	expectedGauge2 := 20.2
+
+	err := storage.UpdateGauge("gauge1", expectedGauge1)
 	assert.NoError(t, err)
 
-	err = storage.UpdateGauge("gauge2", 20.2)
+	err = storage.UpdateGauge("gauge2", expectedGauge2)
 	assert.NoError(t, err)
 
 	gauges, err := storage.GetAllGauge()
 	assert.NoError(t, err)
 
 	assert.Equal(t, 2, len(gauges))
-	assert.Equal(t, 10.1, gauges["gauge1"])
-	assert.Equal(t, 20.2, gauges["gauge2"])
+	assert.Equal(t, expectedGauge1, gauges["gauge1"])
+	assert.Equal(t, expectedGauge2, gauges["gauge2"])
 }
 
 func TestMemStorage_UpdateCounter(t *testing.T) {
@@ -85,39 +88,42 @@ func TestMemStorage_UpdateCounterAndReturn(t *testing.T) {
 func TestMemStorage_GetAllCounter(t *testing.T) {
 	storage := NewMemStorage()
 
-	err := storage.UpdateCounter("counter1", 10)
+	expectedCounter1 := int64(10)
+	expectedCounter2 := int64(20)
+
+	err := storage.UpdateCounter("counter1", expectedCounter1)
 	assert.NoError(t, err)
 
-	err = storage.UpdateCounter("counter2", 20)
+	err = storage.UpdateCounter("counter2", expectedCounter2)
 	assert.NoError(t, err)
 
 	counters, err := storage.GetAllCounter()
 	assert.NoError(t, err)
 
 	assert.Equal(t, 2, len(counters))
-	assert.Equal(t, int64(10), counters["counter1"])
-	assert.Equal(t, int64(20), counters["counter2"])
+	assert.Equal(t, expectedCounter1, counters["counter1"])
+	assert.Equal(t, expectedCounter2, counters["counter2"])
 }
 
 func TestMemStorage_UpdateMetrics(t *testing.T) {
 	storage := NewMemStorage()
 
-	value := 123.4
-	delta := int64(12)
+	expectedGauge := 123.4
+	expectedCounter := int64(12)
 
 	metrics := []model.Metrics{
-		{ID: "TestGauge", MType: string(model.Gauge), Value: &value},
-		{ID: "TestCounter", MType: string(model.Counter), Delta: &delta},
+		{ID: "TestGauge", MType: string(model.Gauge), Value: &expectedGauge},
+		{ID: "TestCounter", MType: string(model.Counter), Delta: &expectedCounter},
 	}
 
 	err := storage.UpdateMetrics(metrics)
 	assert.NoError(t, err)
 
-	gaugeValue, err := storage.GetGauge("TestGauge")
+	gauge, err := storage.GetGauge("TestGauge")
 	assert.NoError(t, err)
-	assert.Equal(t, value, gaugeValue)
+	assert.Equal(t, expectedGauge, gauge)
 
-	counterValue, err := storage.GetCounter("TestCounter")
+	counter, err := storage.GetCounter("TestCounter")
 	assert.NoError(t, err)
-	assert.Equal(t, delta, counterValue)
+	assert.Equal(t, expectedCounter, counter)
 }

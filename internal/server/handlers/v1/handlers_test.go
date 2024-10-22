@@ -220,16 +220,10 @@ func TestGetMetric_Common(t *testing.T) {
 		statusCode  int
 	}
 
-	type storageReturn struct {
-		value int64
-		err   error
-	}
-
 	tests := []struct {
 		name    string
 		request model.Metrics
-		//storageReturn storageReturn
-		want want
+		want    want
 	}{
 		{
 			name:    "Negative scenario. Empty name",
@@ -474,6 +468,8 @@ func TestRenderAllMetrics_Common(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			// Change to project root and back after test finish
 			originalDir, _ := os.Getwd()
+
+			// TODO: Dont know how to fix it
 			os.Chdir("../../../..")
 			defer os.Chdir(originalDir)
 
@@ -542,6 +538,8 @@ func TestRenderAllMetrics_GaugeError(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			// Change to project root and back after test finish
 			originalDir, _ := os.Getwd()
+
+			// TODO: Dont know how to fix it
 			os.Chdir("../../../..")
 			defer os.Chdir(originalDir)
 
@@ -609,6 +607,8 @@ func TestRenderAllMetrics_CounterError(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			// Change to project root and back after test finish
 			originalDir, _ := os.Getwd()
+
+			// TODO: Dont know how to fix it
 			os.Chdir("../../../..")
 			defer os.Chdir(originalDir)
 

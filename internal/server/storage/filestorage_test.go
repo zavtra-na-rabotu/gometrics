@@ -75,9 +75,12 @@ func TestWriteMetricsToFile_RestoreMetricsFromFile(t *testing.T) {
 	assert.NoError(t, err)
 	defer os.Remove(tempFile.Name())
 
+	expectedGauge := 123.45
+	expectedCounter := int64(10)
+
 	writerMemStorage := NewMemStorage()
-	writerMemStorage.UpdateGauge("gauge_metric", 123.45)
-	writerMemStorage.UpdateCounter("counter_metric", 10)
+	writerMemStorage.UpdateGauge("gauge_metric", expectedGauge)
+	writerMemStorage.UpdateCounter("counter_metric", expectedCounter)
 
 	err = WriteMetricsToFile(writerMemStorage, tempFile.Name())
 	assert.NoError(t, err)
@@ -87,8 +90,8 @@ func TestWriteMetricsToFile_RestoreMetricsFromFile(t *testing.T) {
 	assert.NoError(t, err)
 
 	gauge, _ := readerMemStorage.GetGauge("gauge_metric")
-	assert.Equal(t, 123.45, gauge)
+	assert.Equal(t, expectedGauge, gauge)
 
 	counter, _ := readerMemStorage.GetCounter("counter_metric")
-	assert.Equal(t, int64(10), counter)
+	assert.Equal(t, expectedCounter, counter)
 }
