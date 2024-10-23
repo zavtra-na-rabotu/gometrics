@@ -7,6 +7,7 @@ import (
 	"go.uber.org/zap"
 )
 
+// ConfigureStorage method to configure metrics persistence on disk
 func ConfigureStorage(memStorage *MemStorage, fileStoragePath string, restore bool, storeInterval int) error {
 	if fileStoragePath == "" {
 		return nil
@@ -32,7 +33,7 @@ func ConfigureStorage(memStorage *MemStorage, fileStoragePath string, restore bo
 		return nil
 	}
 
-	// Save metrics to file every {config.storeInterval} seconds
+	// Save metrics to file every {storeInterval} seconds
 	storeToFileTicker := time.NewTicker(time.Duration(storeInterval) * time.Second)
 	go func() {
 		for {

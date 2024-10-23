@@ -1,3 +1,4 @@
+// Package v3 contains handlers for API version 3
 package v3
 
 import (
@@ -9,6 +10,7 @@ import (
 	"go.uber.org/zap"
 )
 
+// Ping verifies a connection to the database is still alive
 func Ping(st storage.Storage) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if _, ok := st.(*storage.DBStorage); !ok {
@@ -27,6 +29,7 @@ func Ping(st storage.Storage) http.HandlerFunc {
 	}
 }
 
+// UpdateMetrics handler to update batch of metrics
 func UpdateMetrics(st storage.Storage) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var metrics []model.Metrics

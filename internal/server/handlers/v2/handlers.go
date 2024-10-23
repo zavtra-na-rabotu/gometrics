@@ -1,3 +1,4 @@
+// Package v2 contains handlers for API version 2
 package v2
 
 import (
@@ -11,6 +12,7 @@ import (
 	"go.uber.org/zap"
 )
 
+// UpdateMetric handler to update metric using json data from request body
 func UpdateMetric(st storage.Storage) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var metrics model.Metrics
@@ -71,6 +73,7 @@ func UpdateMetric(st storage.Storage) http.HandlerFunc {
 	}
 }
 
+// GetMetric handler to get metric using json data from request body
 func GetMetric(st storage.Storage) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var metrics model.Metrics

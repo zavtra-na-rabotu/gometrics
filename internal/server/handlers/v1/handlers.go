@@ -1,3 +1,4 @@
+// Package v1 contains handlers for API version 1
 package v1
 
 import (
@@ -13,13 +14,14 @@ import (
 	"go.uber.org/zap"
 )
 
+// MetricResponse response struct for template
 type MetricResponse struct {
 	MetricType  model.MetricType
 	MetricName  string
 	MetricValue string
 }
 
-// GetMetric TODO: What to do if variable name and package name are the same ? Only aliases ?
+// GetMetric handler to get metric by type and name specified as path parameters
 func GetMetric(st storage.Storage) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		metricType := model.MetricType(r.PathValue("type"))
@@ -78,6 +80,7 @@ func GetMetric(st storage.Storage) http.HandlerFunc {
 	}
 }
 
+// UpdateMetric handler to update metric by type, name and value specified as path parameters
 func UpdateMetric(st storage.Storage) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Get data from request
@@ -135,6 +138,7 @@ func UpdateMetric(st storage.Storage) http.HandlerFunc {
 	}
 }
 
+// RenderAllMetrics handler to render list of all metrics as html page
 func RenderAllMetrics(st storage.Storage) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")

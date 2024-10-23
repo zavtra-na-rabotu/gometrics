@@ -1,3 +1,4 @@
+// Package middleware contains gzip, hash and logger middlewares
 package middleware
 
 import (
@@ -15,6 +16,7 @@ func (w *compressWriter) Write(b []byte) (int, error) {
 	return w.gw.Write(b)
 }
 
+// GzipMiddleware compress and decompress requests and responses
 func GzipMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Compress
