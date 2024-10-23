@@ -1,3 +1,4 @@
+// Package configuration read env variables and CLI parameters to configure server
 package configuration
 
 import (
@@ -9,25 +10,37 @@ import (
 	"go.uber.org/zap"
 )
 
+// Configuration structure to configure server parameters
 type Configuration struct {
-	ServerAddress   string
+	// ServerAddress address where the server will be hosted (e.g., "localhost:8080" for localhost on port 8080).
+	ServerAddress string
+
+	// FileStoragePath path to the file where metrics will be stored on the disk.
 	FileStoragePath string
-	DatabaseDsn     string
-	Key             string
-	StoreInterval   int
-	Restore         bool
+
+	// DatabaseDsn Data Source Name for the database connection string.
+	DatabaseDsn string
+
+	// Key for hashing.
+	Key string
+
+	// StoreInterval interval (in seconds) between saving metrics to file.
+	StoreInterval int
+
+	// Restore metrics from file after startup or not.
+	Restore bool
 }
 
 type envs struct {
-	Address         string `env:"ADDRESS"`
-	FileStoragePath string `env:"FILE_STORAGE_PATH"`
-	DatabaseDsn     string `env:"DATABASE_DSN"`
-	Key             string `env:"KEY"`
-	StoreInterval   int    `env:"STORE_INTERVAL"`
-	Restore         bool   `env:"RESTORE"`
+	address         string `env:"ADDRESS"`
+	fileStoragePath string `env:"FILE_STORAGE_PATH"`
+	databaseDsn     string `env:"DATABASE_DSN"`
+	key             string `env:"KEY"`
+	storeInterval   int    `env:"STORE_INTERVAL"`
+	restore         bool   `env:"RESTORE"`
 }
 
-// Configure TODO: Move to internal.
+// Configure read env variables and CLI parameters to configure server
 func Configure() *Configuration {
 	var config Configuration
 
@@ -50,33 +63,33 @@ func Configure() *Configuration {
 	}
 
 	_, exists := os.LookupEnv("ADDRESS")
-	if exists && !stringutils.IsEmpty(envVariables.Address) {
-		config.ServerAddress = envVariables.Address
+	if exists && !stringutils.IsEmpty(envVariables.address) {
+		config.ServerAddress = envVariables.address
 	}
 
 	_, exists = os.LookupEnv("STORE_INTERVAL")
 	if exists {
-		config.StoreInterval = envVariables.StoreInterval
+		config.StoreInterval = envVariables.storeInterval
 	}
 
 	_, exists = os.LookupEnv("FILE_STORAGE_PATH")
-	if exists && !stringutils.IsEmpty(envVariables.FileStoragePath) {
-		config.FileStoragePath = envVariables.FileStoragePath
+	if exists && !stringutils.IsEmpty(envVariables.fileStoragePath) {
+		config.FileStoragePath = envVariables.fileStoragePath
 	}
 
 	_, exists = os.LookupEnv("RESTORE")
 	if exists {
-		config.Restore = envVariables.Restore
+		config.Restore = envVariables.restore
 	}
 
 	_, exists = os.LookupEnv("DATABASE_DSN")
 	if exists {
-		config.DatabaseDsn = envVariables.DatabaseDsn
+		config.DatabaseDsn = envVariables.databaseDsn
 	}
 
 	_, exists = os.LookupEnv("KEY")
 	if exists {
-		config.Key = envVariables.Key
+		config.Key = envVariables.key
 	}
 
 	return &config

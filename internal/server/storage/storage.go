@@ -6,6 +6,7 @@ import (
 	"github.com/zavtra-na-rabotu/gometrics/internal/model"
 )
 
+// Storage interface for all types of storages
 type Storage interface {
 	UpdateGauge(name string, metric float64) error
 	UpdateCounter(name string, metric int64) error

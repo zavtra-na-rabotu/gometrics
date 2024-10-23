@@ -1,6 +1,25 @@
 package stringutils
 
-import "testing"
+import (
+	"fmt"
+	"testing"
+)
+
+func Example() {
+	out1 := IsEmpty("")
+	fmt.Println(out1)
+
+	out2 := IsEmpty("   ")
+	fmt.Println(out2)
+
+	out3 := IsEmpty("Whatever")
+	fmt.Println(out3)
+
+	// Output:
+	// true
+	// true
+	// false
+}
 
 func TestIsEmpty(t *testing.T) {
 	tests := []struct {

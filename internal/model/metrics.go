@@ -6,6 +6,7 @@ import (
 	"strconv"
 )
 
+// Metrics main structure to store all types of metrics
 type Metrics struct {
 	Value *float64 `json:"value,omitempty"` // значение метрики в случае передачи gauge
 	Delta *int64   `json:"delta,omitempty"` // значение метрики в случае передачи counter
@@ -13,6 +14,7 @@ type Metrics struct {
 	MType string   `json:"type"`            // параметр, принимающий значение gauge или counter
 }
 
+// UnmarshalJSON custom logic for unmarshalling JSON to Metrics structure
 func (m *Metrics) UnmarshalJSON(data []byte) (err error) {
 	type MetricsAlias Metrics
 

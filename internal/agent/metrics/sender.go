@@ -17,6 +17,7 @@ import (
 	"go.uber.org/zap"
 )
 
+// Sender structure with all dependencies for metrics sending
 type Sender struct {
 	client         *resty.Client
 	collector      *Collector
@@ -25,6 +26,7 @@ type Sender struct {
 	reportInterval time.Duration
 }
 
+// NewSender sender constructor
 func NewSender(url string, key string, rateLimit int, reportInterval int, collector *Collector) *Sender {
 	return &Sender{
 		client:         resty.New().SetBaseURL("http://" + url),
@@ -40,7 +42,6 @@ func (sender *Sender) worker(id int, jobs <-chan []model.Metrics, wg *sync.WaitG
 	defer wg.Done()
 
 	for metrics := range jobs {
-		//zap.L().Info("Sending metrics", zap.Any("metrics", metrics))
 		err := sender.sendMetrics(metrics)
 		if err != nil {
 			zap.L().Error("Error sending metrics", zap.Error(err), zap.Int("Worker id", id))
@@ -50,6 +51,7 @@ func (sender *Sender) worker(id int, jobs <-chan []model.Metrics, wg *sync.WaitG
 	}
 }
 
+// InitSender init and start sending collected metrics with specified interval and rate limit
 func (sender *Sender) InitSender() {
 	sendJobs := make(chan []model.Metrics, sender.rateLimit)
 

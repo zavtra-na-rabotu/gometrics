@@ -8,22 +8,33 @@ import (
 	"go.uber.org/zap"
 )
 
+// Configuration structure to configure agent parameters
 type Configuration struct {
-	ServerAddress  string
-	Key            string
+	// ServerAddress address where metrics should be sent (e.g., "localhost:8080" for localhost on port 8080).
+	ServerAddress string
+
+	// Key for hashing.
+	Key string
+
+	// ReportInterval interval (in seconds) between sending metrics to server
 	ReportInterval int
-	PollInterval   int
-	RateLimit      int
+
+	// PollInterval interval (in seconds) between collecting metrics
+	PollInterval int
+
+	// RateLimit limit outgoing requests with metrics
+	RateLimit int
 }
 
 type envs struct {
-	ServerAddress  string `env:"ADDRESS"`
-	Key            string `env:"KEY"`
-	ReportInterval int    `env:"REPORT_INTERVAL"`
-	PollInterval   int    `env:"POLL_INTERVAL"`
-	RateLimit      int    `env:"RATE_LIMIT"`
+	serverAddress  string `env:"ADDRESS"`
+	key            string `env:"KEY"`
+	reportInterval int    `env:"REPORT_INTERVAL"`
+	pollInterval   int    `env:"POLL_INTERVAL"`
+	rateLimit      int    `env:"RATE_LIMIT"`
 }
 
+// Configure read env variables and CLI parameters to configure server
 func Configure() *Configuration {
 	var config Configuration
 
@@ -44,28 +55,28 @@ func Configure() *Configuration {
 	}
 
 	_, exists := os.LookupEnv("ADDRESS")
-	if exists && envVariables.ServerAddress != "" {
-		config.ServerAddress = envVariables.ServerAddress
+	if exists && envVariables.serverAddress != "" {
+		config.ServerAddress = envVariables.serverAddress
 	}
 
 	_, exists = os.LookupEnv("REPORT_INTERVAL")
-	if exists && envVariables.ReportInterval != 0 {
-		config.ReportInterval = envVariables.ReportInterval
+	if exists && envVariables.reportInterval != 0 {
+		config.ReportInterval = envVariables.reportInterval
 	}
 
 	_, exists = os.LookupEnv("POLL_INTERVAL")
-	if exists && envVariables.PollInterval != 0 {
-		config.PollInterval = envVariables.PollInterval
+	if exists && envVariables.pollInterval != 0 {
+		config.PollInterval = envVariables.pollInterval
 	}
 
 	_, exists = os.LookupEnv("KEY")
 	if exists {
-		config.Key = envVariables.Key
+		config.Key = envVariables.key
 	}
 
 	_, exists = os.LookupEnv("RATE_LIMIT")
-	if exists && envVariables.RateLimit != 0 {
-		config.RateLimit = envVariables.RateLimit
+	if exists && envVariables.rateLimit != 0 {
+		config.RateLimit = envVariables.rateLimit
 	}
 
 	return &config

@@ -27,6 +27,7 @@ func calculateHash(data []byte, key string) string {
 	return hex.EncodeToString(hash.Sum(nil))
 }
 
+// ResponseHashMiddleware calculate hash of response and set HashSHA256 header
 func ResponseHashMiddleware(key string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -35,6 +36,7 @@ func ResponseHashMiddleware(key string) func(http.Handler) http.Handler {
 	}
 }
 
+// RequestHashMiddleware calculate hash of request and compare with received hash from HashSHA256 header
 func RequestHashMiddleware(key string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

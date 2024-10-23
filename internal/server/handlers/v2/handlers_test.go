@@ -4,10 +4,12 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	mock_storage "github.com/zavtra-na-rabotu/gometrics/internal/mocks"
@@ -15,6 +17,44 @@ import (
 
 	"github.com/zavtra-na-rabotu/gometrics/internal/server/storage"
 )
+
+func Example() {
+	memStorage := storage.NewMemStorage()
+
+	r := chi.NewRouter()
+
+	r.Post("/update", UpdateMetric(memStorage))
+	r.Get("/value", GetMetric(memStorage))
+
+	updateMetricRequest := map[string]interface{}{
+		"id":    "Counter metric",
+		"delta": 12,
+		"type":  "counter",
+	}
+	updateMetricBody, _ := json.Marshal(updateMetricRequest)
+
+	updateMetric := httptest.NewRequest(http.MethodPost, "/update", bytes.NewBuffer(updateMetricBody))
+	updateMetricRecorder := httptest.NewRecorder()
+	r.ServeHTTP(updateMetricRecorder, updateMetric)
+	updateMetricResult := updateMetricRecorder.Result()
+	fmt.Println(updateMetricResult.StatusCode)
+
+	getMetricRequest := map[string]interface{}{
+		"id":   "Counter metric",
+		"type": "counter",
+	}
+	getMetricBody, _ := json.Marshal(getMetricRequest)
+
+	getMetric := httptest.NewRequest(http.MethodGet, "/value", bytes.NewBuffer(getMetricBody))
+	getMetricRecorder := httptest.NewRecorder()
+	r.ServeHTTP(getMetricRecorder, getMetric)
+	getMetricResult := getMetricRecorder.Result()
+	fmt.Println(getMetricResult.StatusCode)
+
+	// Output:
+	// 200
+	// 200
+}
 
 func TestUpdateMetric_Common(t *testing.T) {
 	type want struct {

@@ -4,15 +4,43 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	mock_storage "github.com/zavtra-na-rabotu/gometrics/internal/mocks"
 	"github.com/zavtra-na-rabotu/gometrics/internal/model"
+	"github.com/zavtra-na-rabotu/gometrics/internal/server/storage"
 )
+
+func Example() {
+	memStorage := storage.NewMemStorage()
+
+	r := chi.NewRouter()
+
+	r.Post("/updates", UpdateMetrics(memStorage))
+
+	testValue := 23.4
+	testDelta := int64(12)
+	updateMetricRequest := []model.Metrics{
+		{ID: "Gauge metric", Value: &testValue, MType: "gauge"},
+		{ID: "Value metric", Delta: &testDelta, MType: "counter"},
+	}
+	updateMetricsBody, _ := json.Marshal(updateMetricRequest)
+
+	updateMetrics := httptest.NewRequest(http.MethodPost, "/updates", bytes.NewBuffer(updateMetricsBody))
+	updateMetricsRecorder := httptest.NewRecorder()
+	r.ServeHTTP(updateMetricsRecorder, updateMetrics)
+	updateMetricsResult := updateMetricsRecorder.Result()
+	fmt.Println(updateMetricsResult.StatusCode)
+
+	// Output:
+	// 200
+}
 
 func TestUpdateMetrics(t *testing.T) {
 	type want struct {
@@ -33,7 +61,7 @@ func TestUpdateMetrics(t *testing.T) {
 			name: "Positive scenario. Two metrics (200)",
 			request: []model.Metrics{
 				{ID: "Gauge metric", Value: &testValue, MType: "gauge"},
-				{ID: "Value metric", Delta: &testDelta, MType: "delta"},
+				{ID: "Value metric", Delta: &testDelta, MType: "counter"},
 			},
 			storageReturns: nil,
 			want: want{

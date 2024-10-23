@@ -14,6 +14,7 @@ import (
 	"github.com/shirou/gopsutil/v4/mem"
 )
 
+// Collector structure with all dependencies for metrics collection
 type Collector struct {
 	gaugeMetrics   map[string]float64
 	counterMetrics map[string]int64
@@ -23,6 +24,7 @@ type Collector struct {
 	counterLock    sync.RWMutex
 }
 
+// NewCollector Collector constructor
 func NewCollector(pollInterval int, metrics chan []model.Metrics) *Collector {
 	return &Collector{
 		gaugeMetrics:   make(map[string]float64),
@@ -34,6 +36,7 @@ func NewCollector(pollInterval int, metrics chan []model.Metrics) *Collector {
 	}
 }
 
+// ResetPollCounter reset poll counter after metrics successfully sent to server
 func (collector *Collector) ResetPollCounter() {
 	collector.counterLock.Lock()
 	defer collector.counterLock.Unlock()
@@ -41,6 +44,7 @@ func (collector *Collector) ResetPollCounter() {
 	collector.counterMetrics["PollCount"] = 0
 }
 
+// InitCollector init main metrics collector
 func (collector *Collector) InitCollector() {
 	ticker := time.NewTicker(collector.pollInterval)
 	defer ticker.Stop()
@@ -71,6 +75,7 @@ func (collector *Collector) InitCollector() {
 	}
 }
 
+// InitPsutilCollector init process and system utilities metrics collector
 func (collector *Collector) InitPsutilCollector() {
 	ticker := time.NewTicker(collector.pollInterval)
 	defer ticker.Stop()
@@ -80,6 +85,7 @@ func (collector *Collector) InitPsutilCollector() {
 	}
 }
 
+// CollectPsutilMetrics collect process and system utilities metrics
 func (collector *Collector) CollectPsutilMetrics() {
 	collector.gaugeLock.Lock()
 	defer collector.gaugeLock.Unlock()
@@ -104,6 +110,7 @@ func (collector *Collector) CollectPsutilMetrics() {
 	}
 }
 
+// CollectCounterMetrics collect counter metrics
 func (collector *Collector) CollectCounterMetrics() {
 	collector.counterLock.Lock()
 	defer collector.counterLock.Unlock()
@@ -111,6 +118,7 @@ func (collector *Collector) CollectCounterMetrics() {
 	collector.counterMetrics["PollCount"]++
 }
 
+// CollectGaugeMetrics collect gauge metrics
 func (collector *Collector) CollectGaugeMetrics() {
 	collector.gaugeLock.Lock()
 	defer collector.gaugeLock.Unlock()
@@ -148,6 +156,7 @@ func (collector *Collector) CollectGaugeMetrics() {
 	collector.gaugeMetrics["RandomValue"] = rand.Float64()
 }
 
+// CreateMetrics map all collected metrics to model.Metrics structure
 func (collector *Collector) CreateMetrics() []model.Metrics {
 	zap.L().Info("PollCount", zap.Int64("PollCount", collector.counterMetrics["PollCount"]))
 

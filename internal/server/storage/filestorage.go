@@ -19,6 +19,7 @@ type Writer struct {
 
 var ErrFileStoragePathNotProvided = errors.New("file storage path not provided")
 
+// NewWriter create new file writer to store metrics on disk
 func NewWriter(fileStoragePath string) (*Writer, error) {
 	file, err := os.OpenFile(fileStoragePath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o600)
 	if err != nil {
@@ -27,6 +28,7 @@ func NewWriter(fileStoragePath string) (*Writer, error) {
 	return &Writer{file, bufio.NewWriter(file)}, nil
 }
 
+// WriteMetric write one metric to file
 func (p *Writer) WriteMetric(metrics model.Metrics) error {
 	data, err := json.Marshal(&metrics)
 	if err != nil {
@@ -50,6 +52,7 @@ type Reader struct {
 	scanner *bufio.Scanner
 }
 
+// NewReader create new file reader to read metrics from file
 func NewReader(filename string) (*Reader, error) {
 	file, err := os.OpenFile(filename, os.O_RDONLY|os.O_CREATE, 0o600)
 	if err != nil {
@@ -58,6 +61,7 @@ func NewReader(filename string) (*Reader, error) {
 	return &Reader{file, bufio.NewScanner(file)}, nil
 }
 
+// ReadMetric read one metric from file
 func (c *Reader) ReadMetric() (*model.Metrics, error) {
 	if !c.scanner.Scan() {
 		return nil, c.scanner.Err()
@@ -78,6 +82,7 @@ func (c *Reader) Close() error {
 	return c.file.Close()
 }
 
+// WriteMetricsToFile method to write all metrics from mem storage to specified file
 func WriteMetricsToFile(memStorage *MemStorage, fileStoragePath string) error {
 	if fileStoragePath == "" {
 		return ErrFileStoragePathNotProvided
@@ -108,6 +113,7 @@ func WriteMetricsToFile(memStorage *MemStorage, fileStoragePath string) error {
 	return nil
 }
 
+// RestoreMetricsFromFile method to restore all metrics from specified file
 func RestoreMetricsFromFile(memStorage *MemStorage, fileStoragePath string) error {
 	if fileStoragePath == "" {
 		return ErrFileStoragePathNotProvided

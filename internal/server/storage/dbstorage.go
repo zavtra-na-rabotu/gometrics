@@ -31,6 +31,7 @@ type Repository interface {
 	Ping() error
 }
 
+// NewDBStorage method to open new PostgresSQL connection
 func NewDBStorage(databaseDsn string) (*DBStorage, error) {
 	db, err := sql.Open("pgx", databaseDsn)
 	if err != nil {
@@ -39,6 +40,7 @@ func NewDBStorage(databaseDsn string) (*DBStorage, error) {
 	return &DBStorage{DB: db}, nil
 }
 
+// RunMigrations method to run all migrations
 func (storage *DBStorage) RunMigrations() error {
 	driver, err := postgres.WithInstance(storage.DB, &postgres.Config{})
 	if err != nil {
@@ -73,10 +75,12 @@ func (storage *DBStorage) Close() {
 	}
 }
 
+// Ping verifies a connection to the database is still alive
 func (storage *DBStorage) Ping() error {
 	return storage.DB.Ping()
 }
 
+// UpdateGauge method to update gauge metric
 func (storage *DBStorage) UpdateGauge(name string, metric float64) error {
 	return storage.retryableExec(`
 		INSERT INTO gauge (name, value) VALUES ($1, $2)
@@ -91,6 +95,7 @@ func (storage *DBStorage) UpdateCounter(name string, metric int64) error {
 	`, name, metric)
 }
 
+// UpdateCounterAndReturn method to update counter metric and return updated value
 func (storage *DBStorage) UpdateCounterAndReturn(name string, metric int64) (int64, error) {
 	var value int64
 
@@ -112,6 +117,7 @@ func (storage *DBStorage) UpdateCounterAndReturn(name string, metric int64) (int
 	return metric, nil
 }
 
+// GetGauge method to get gauge metric by name
 func (storage *DBStorage) GetGauge(name string) (float64, error) {
 	var value float64
 	row, err := storage.retryableQueryRow(`SELECT value FROM gauge WHERE name = $1`, name)
@@ -130,6 +136,7 @@ func (storage *DBStorage) GetGauge(name string) (float64, error) {
 	return value, nil
 }
 
+// GetCounter method to get counter metric by name
 func (storage *DBStorage) GetCounter(name string) (int64, error) {
 	var value int64
 	row, err := storage.retryableQueryRow(`SELECT value FROM counter WHERE name = $1`, name)
@@ -148,6 +155,7 @@ func (storage *DBStorage) GetCounter(name string) (int64, error) {
 	return value, nil
 }
 
+// GetAllGauge method to get all gauge metrics
 func (storage *DBStorage) GetAllGauge() (map[string]float64, error) {
 	rows, err := storage.retryableQuery(`SELECT name, value FROM gauge`)
 	if err != nil {
@@ -177,6 +185,7 @@ func (storage *DBStorage) GetAllGauge() (map[string]float64, error) {
 	return gaugeMetrics, nil
 }
 
+// GetAllCounter method to get all counter metrics
 func (storage *DBStorage) GetAllCounter() (map[string]int64, error) {
 	rows, err := storage.retryableQuery(`SELECT name, value FROM counter`)
 	if err != nil {
@@ -206,6 +215,7 @@ func (storage *DBStorage) GetAllCounter() (map[string]int64, error) {
 	return counterMetrics, nil
 }
 
+// UpdateMetrics method to update batch of different types of metrics
 func (storage *DBStorage) UpdateMetrics(metrics []model.Metrics) error {
 	tx, err := storage.DB.Begin()
 	if err != nil {

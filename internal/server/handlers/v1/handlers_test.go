@@ -2,18 +2,61 @@ package v1
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"strconv"
 	"testing"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	mock_storage "github.com/zavtra-na-rabotu/gometrics/internal/mocks"
 	"github.com/zavtra-na-rabotu/gometrics/internal/model"
 	"github.com/zavtra-na-rabotu/gometrics/internal/server/storage"
 )
+
+func Example() {
+	// Change to project root and back after test finish
+	originalDir, _ := os.Getwd()
+
+	// TODO: Dont know how to fix it
+	os.Chdir("../../../..")
+	defer os.Chdir(originalDir)
+
+	memStorage := storage.NewMemStorage()
+
+	r := chi.NewRouter()
+
+	r.Post("/update/{type}/{name}/{value}", UpdateMetric(memStorage))
+	r.Get("/value/{type}/{name}", GetMetric(memStorage))
+	r.Get("/", RenderAllMetrics(memStorage))
+
+	// Пример запроса и ответа:
+	createMetric := httptest.NewRequest(http.MethodPost, "/update/gauge/cpu/10", nil)
+	createMetricRecorder := httptest.NewRecorder()
+	r.ServeHTTP(createMetricRecorder, createMetric)
+	createMetricResult := createMetricRecorder.Result()
+	fmt.Println(createMetricResult.StatusCode)
+
+	getMetric := httptest.NewRequest(http.MethodGet, "/value/gauge/cpu", nil)
+	getMetricRecorder := httptest.NewRecorder()
+	r.ServeHTTP(getMetricRecorder, getMetric)
+	getMetricResult := getMetricRecorder.Result()
+	fmt.Println(getMetricResult.StatusCode)
+
+	getAllMetrics := httptest.NewRequest(http.MethodGet, "/", nil)
+	getAllMetricsRecorder := httptest.NewRecorder()
+	r.ServeHTTP(getAllMetricsRecorder, getAllMetrics)
+	getAllMetricsResult := getAllMetricsRecorder.Result()
+	fmt.Println(getAllMetricsResult.StatusCode)
+
+	// Output:
+	// 200
+	// 200
+	// 200
+}
 
 func TestUpdateMetric_Common(t *testing.T) {
 	type want struct {
