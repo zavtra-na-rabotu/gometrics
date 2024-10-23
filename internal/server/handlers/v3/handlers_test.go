@@ -36,6 +36,7 @@ func Example() {
 	updateMetricsRecorder := httptest.NewRecorder()
 	r.ServeHTTP(updateMetricsRecorder, updateMetrics)
 	updateMetricsResult := updateMetricsRecorder.Result()
+	defer updateMetricsResult.Body.Close()
 	fmt.Println(updateMetricsResult.StatusCode)
 
 	// Output:

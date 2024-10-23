@@ -38,18 +38,21 @@ func Example() {
 	createMetricRecorder := httptest.NewRecorder()
 	r.ServeHTTP(createMetricRecorder, createMetric)
 	createMetricResult := createMetricRecorder.Result()
+	defer createMetricResult.Body.Close()
 	fmt.Println(createMetricResult.StatusCode)
 
 	getMetric := httptest.NewRequest(http.MethodGet, "/value/gauge/cpu", nil)
 	getMetricRecorder := httptest.NewRecorder()
 	r.ServeHTTP(getMetricRecorder, getMetric)
 	getMetricResult := getMetricRecorder.Result()
+	defer getMetricResult.Body.Close()
 	fmt.Println(getMetricResult.StatusCode)
 
 	getAllMetrics := httptest.NewRequest(http.MethodGet, "/", nil)
 	getAllMetricsRecorder := httptest.NewRecorder()
 	r.ServeHTTP(getAllMetricsRecorder, getAllMetrics)
 	getAllMetricsResult := getAllMetricsRecorder.Result()
+	defer getAllMetricsResult.Body.Close()
 	fmt.Println(getAllMetricsResult.StatusCode)
 
 	// Output:

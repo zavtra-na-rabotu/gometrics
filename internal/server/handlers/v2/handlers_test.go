@@ -37,6 +37,7 @@ func Example() {
 	updateMetricRecorder := httptest.NewRecorder()
 	r.ServeHTTP(updateMetricRecorder, updateMetric)
 	updateMetricResult := updateMetricRecorder.Result()
+	defer updateMetricResult.Body.Close()
 	fmt.Println(updateMetricResult.StatusCode)
 
 	getMetricRequest := map[string]interface{}{
@@ -49,6 +50,7 @@ func Example() {
 	getMetricRecorder := httptest.NewRecorder()
 	r.ServeHTTP(getMetricRecorder, getMetric)
 	getMetricResult := getMetricRecorder.Result()
+	defer getMetricResult.Body.Close()
 	fmt.Println(getMetricResult.StatusCode)
 
 	// Output:
