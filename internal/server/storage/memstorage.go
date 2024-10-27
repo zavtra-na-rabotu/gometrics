@@ -8,6 +8,7 @@ import (
 	"go.uber.org/zap"
 )
 
+// MemStorage structure to store all metrics in ram with locks and file writer for disk persistence
 type MemStorage struct {
 	gauge       map[string]float64
 	counter     map[string]int64
@@ -17,6 +18,7 @@ type MemStorage struct {
 	syncMode    bool
 }
 
+// NewMemStorage constructor to create mem storage
 func NewMemStorage() *MemStorage {
 	return &MemStorage{
 		make(map[string]float64),
@@ -28,14 +30,17 @@ func NewMemStorage() *MemStorage {
 	}
 }
 
+// SetSyncMode method to enable/disable synchronous method
 func (storage *MemStorage) SetSyncMode(syncMode bool) {
 	storage.syncMode = syncMode
 }
 
+// SetFileWriter method to set file writer
 func (storage *MemStorage) SetFileWriter(fileWriter *Writer) {
 	storage.fileWriter = fileWriter
 }
 
+// UpdateGauge method to update gauge metric
 func (storage *MemStorage) UpdateGauge(name string, metric float64) error {
 	storage.gaugeLock.Lock()
 	defer storage.gaugeLock.Unlock()
@@ -52,6 +57,7 @@ func (storage *MemStorage) UpdateGauge(name string, metric float64) error {
 	return nil
 }
 
+// UpdateCounter method to update counter metric
 func (storage *MemStorage) UpdateCounter(name string, metric int64) error {
 	storage.counterLock.Lock()
 	defer storage.counterLock.Unlock()
@@ -69,6 +75,7 @@ func (storage *MemStorage) UpdateCounter(name string, metric int64) error {
 	return nil
 }
 
+// UpdateCounterAndReturn method to update counter and return updated value
 func (storage *MemStorage) UpdateCounterAndReturn(name string, metric int64) (int64, error) {
 	storage.counterLock.Lock()
 	defer storage.counterLock.Unlock()
@@ -87,6 +94,7 @@ func (storage *MemStorage) UpdateCounterAndReturn(name string, metric int64) (in
 	return storage.counter[name], nil
 }
 
+// GetGauge method to get one gauge metric by name
 func (storage *MemStorage) GetGauge(name string) (float64, error) {
 	storage.gaugeLock.RLock()
 	defer storage.gaugeLock.RUnlock()
@@ -99,6 +107,7 @@ func (storage *MemStorage) GetGauge(name string) (float64, error) {
 	return value, nil
 }
 
+// GetCounter method to get one counter metric by name
 func (storage *MemStorage) GetCounter(name string) (int64, error) {
 	storage.counterLock.RLock()
 	defer storage.counterLock.RUnlock()
@@ -111,6 +120,7 @@ func (storage *MemStorage) GetCounter(name string) (int64, error) {
 	return value, nil
 }
 
+// GetAllGauge method to get all gauge metrics
 func (storage *MemStorage) GetAllGauge() (map[string]float64, error) {
 	storage.gaugeLock.RLock()
 	defer storage.gaugeLock.RUnlock()
@@ -123,6 +133,7 @@ func (storage *MemStorage) GetAllGauge() (map[string]float64, error) {
 	return gaugeCopy, nil
 }
 
+// GetAllCounter method to get all counter metrics
 func (storage *MemStorage) GetAllCounter() (map[string]int64, error) {
 	storage.counterLock.RLock()
 	defer storage.counterLock.RUnlock()
@@ -135,6 +146,7 @@ func (storage *MemStorage) GetAllCounter() (map[string]int64, error) {
 	return counterCopy, nil
 }
 
+// UpdateMetrics method to update batch of metrics
 func (storage *MemStorage) UpdateMetrics(metrics []model.Metrics) error {
 	for _, metric := range metrics {
 		switch metric.MType {
