@@ -1,3 +1,4 @@
+// Package model is a package for main project entities
 package model
 
 import (

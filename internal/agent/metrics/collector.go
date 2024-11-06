@@ -1,3 +1,4 @@
+// Package metrics is a package for main agent logic
 package metrics
 
 import (
@@ -18,8 +19,8 @@ import (
 type Collector struct {
 	gaugeMetrics   map[string]float64
 	counterMetrics map[string]int64
-	pollInterval   time.Duration
 	metrics        chan []model.Metrics
+	pollInterval   time.Duration
 	gaugeLock      sync.RWMutex
 	counterLock    sync.RWMutex
 }

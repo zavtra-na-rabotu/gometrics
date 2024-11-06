@@ -1,3 +1,4 @@
+// Package storage is a package for different storage implementations
 package storage
 
 import (

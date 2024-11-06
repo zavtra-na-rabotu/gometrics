@@ -1,3 +1,4 @@
+// Package configuration is a package for agent configuration
 package configuration
 
 import (
