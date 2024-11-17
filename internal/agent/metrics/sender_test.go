@@ -26,7 +26,7 @@ func TestNewSender(t *testing.T) {
 
 	collector := &Collector{}
 
-	sender := NewSender(url, key, rateLimit, reportInterval, collector)
+	sender := NewSender(url, key, rateLimit, reportInterval, nil, collector)
 
 	assert.NotNil(t, sender)
 	assert.Equal(t, "http://"+url, sender.client.BaseURL)
