@@ -4,7 +4,7 @@ go 1.22.2
 
 require (
 	github.com/DATA-DOG/go-sqlmock v1.5.2
-	github.com/caarlos0/env/v11 v11.0.0
+	github.com/caarlos0/env/v11 v11.2.2
 	github.com/go-chi/chi/v5 v5.0.12
 	github.com/go-resty/resty/v2 v2.12.0
 	github.com/golang-migrate/migrate/v4 v4.17.1

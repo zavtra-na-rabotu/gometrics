@@ -12,6 +12,7 @@ import (
 	v2 "github.com/zavtra-na-rabotu/gometrics/internal/server/handlers/v2"
 	v3 "github.com/zavtra-na-rabotu/gometrics/internal/server/handlers/v3"
 	"github.com/zavtra-na-rabotu/gometrics/internal/server/middleware"
+	"github.com/zavtra-na-rabotu/gometrics/internal/server/security"
 	"github.com/zavtra-na-rabotu/gometrics/internal/server/storage"
 	"github.com/zavtra-na-rabotu/gometrics/internal/utils/stringutils"
 	"go.uber.org/zap"
@@ -32,6 +33,16 @@ func main() {
 	logger.InitLogger()
 
 	r := chi.NewRouter()
+
+	if config.CryptoKey != "" {
+		privateKey, err := security.ParsePrivateKey(config.CryptoKey)
+		if err != nil {
+			zap.L().Fatal("Failed to parse crypto key", zap.Error(err))
+		}
+
+		r.Use(middleware.DecryptMiddleware(privateKey))
+	}
+
 	r.Use(middleware.RequestLoggerMiddleware)
 	r.Use(middleware.GzipMiddleware)
 

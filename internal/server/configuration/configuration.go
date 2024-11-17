@@ -12,7 +12,7 @@ import (
 
 // Configuration structure to configure server parameters
 type Configuration struct {
-	// ServerAddress address where the server will be hosted (e.g., "localhost:8080" for localhost on port 8080).
+	// ServerAddress Address where the server will be hosted (e.g., "localhost:8080" for localhost on port 8080).
 	ServerAddress string
 
 	// FileStoragePath path to the file where metrics will be stored on the disk.
@@ -20,6 +20,9 @@ type Configuration struct {
 
 	// DatabaseDsn Data Source Name for the database connection string.
 	DatabaseDsn string
+
+	// CryptoKey path to private Key for request decryption
+	CryptoKey string
 
 	// Key for hashing.
 	Key string
@@ -32,12 +35,13 @@ type Configuration struct {
 }
 
 type envs struct {
-	address         string `env:"ADDRESS"`
-	fileStoragePath string `env:"FILE_STORAGE_PATH"`
-	databaseDsn     string `env:"DATABASE_DSN"`
-	key             string `env:"KEY"`
-	storeInterval   int    `env:"STORE_INTERVAL"`
-	restore         bool   `env:"RESTORE"`
+	Address         string `env:"ADDRESS"`
+	FileStoragePath string `env:"FILE_STORAGE_PATH"`
+	DatabaseDsn     string `env:"DATABASE_DSN"`
+	Key             string `env:"KEY"`
+	CryptoKey       string `env:"CRYPTO_KEY"`
+	StoreInterval   int    `env:"STORE_INTERVAL"`
+	Restore         bool   `env:"RESTORE"`
 }
 
 // Configure read env variables and CLI parameters to configure server
@@ -54,42 +58,48 @@ func Configure() *Configuration {
 	flag.BoolVar(&config.Restore, "r", defaultRestore, "Restore")
 	flag.StringVar(&config.DatabaseDsn, "d", "", "Database DSN")
 	flag.StringVar(&config.Key, "k", "", "Key")
+	flag.StringVar(&config.CryptoKey, "crypto-key", "", "Crypto Key")
 	flag.Parse()
 
-	envVariables := envs{}
+	var envVariables envs
 	err := env.Parse(&envVariables)
 	if err != nil {
 		zap.L().Error("Failed to parse environment variables", zap.Error(err))
 	}
 
 	_, exists := os.LookupEnv("ADDRESS")
-	if exists && !stringutils.IsEmpty(envVariables.address) {
-		config.ServerAddress = envVariables.address
+	if exists && !stringutils.IsEmpty(envVariables.Address) {
+		config.ServerAddress = envVariables.Address
 	}
 
 	_, exists = os.LookupEnv("STORE_INTERVAL")
 	if exists {
-		config.StoreInterval = envVariables.storeInterval
+		config.StoreInterval = envVariables.StoreInterval
 	}
 
 	_, exists = os.LookupEnv("FILE_STORAGE_PATH")
-	if exists && !stringutils.IsEmpty(envVariables.fileStoragePath) {
-		config.FileStoragePath = envVariables.fileStoragePath
+	if exists && !stringutils.IsEmpty(envVariables.FileStoragePath) {
+		config.FileStoragePath = envVariables.FileStoragePath
 	}
 
 	_, exists = os.LookupEnv("RESTORE")
 	if exists {
-		config.Restore = envVariables.restore
+		config.Restore = envVariables.Restore
 	}
 
 	_, exists = os.LookupEnv("DATABASE_DSN")
 	if exists {
-		config.DatabaseDsn = envVariables.databaseDsn
+		config.DatabaseDsn = envVariables.DatabaseDsn
 	}
 
 	_, exists = os.LookupEnv("KEY")
 	if exists {
-		config.Key = envVariables.key
+		config.Key = envVariables.Key
+	}
+
+	_, exists = os.LookupEnv("CRYPTO_KEY")
+	if exists && envVariables.CryptoKey != "" {
+		config.CryptoKey = envVariables.CryptoKey
 	}
 
 	return &config

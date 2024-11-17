@@ -17,6 +17,9 @@ type Configuration struct {
 	// Key for hashing.
 	Key string
 
+	// CryptoKey path to public Key for request encryption
+	CryptoKey string
+
 	// ReportInterval interval (in seconds) between sending metrics to server
 	ReportInterval int
 
@@ -28,11 +31,12 @@ type Configuration struct {
 }
 
 type envs struct {
-	serverAddress  string `env:"ADDRESS"`
-	key            string `env:"KEY"`
-	reportInterval int    `env:"REPORT_INTERVAL"`
-	pollInterval   int    `env:"POLL_INTERVAL"`
-	rateLimit      int    `env:"RATE_LIMIT"`
+	ServerAddress  string `env:"ADDRESS"`
+	Key            string `env:"KEY"`
+	CryptoKey      string `env:"CRYPTO_KEY"`
+	ReportInterval int    `env:"REPORT_INTERVAL"`
+	PollInterval   int    `env:"POLL_INTERVAL"`
+	RateLimit      int    `env:"RATE_LIMIT"`
 }
 
 // Configure read env variables and CLI parameters to configure server
@@ -47,37 +51,43 @@ func Configure() *Configuration {
 	flag.IntVar(&config.PollInterval, "p", defaultPollInterval, "Poll interval in seconds")
 	flag.StringVar(&config.Key, "k", "", "Key")
 	flag.IntVar(&config.RateLimit, "l", 1, "Rate limit")
+	flag.StringVar(&config.CryptoKey, "crypto-key", "", "Crypto Key")
 	flag.Parse()
 
-	envVariables := envs{}
+	var envVariables envs
 	err := env.Parse(&envVariables)
 	if err != nil {
 		zap.L().Error("Failed to parse environment variables", zap.Error(err))
 	}
 
 	_, exists := os.LookupEnv("ADDRESS")
-	if exists && envVariables.serverAddress != "" {
-		config.ServerAddress = envVariables.serverAddress
+	if exists && envVariables.ServerAddress != "" {
+		config.ServerAddress = envVariables.ServerAddress
 	}
 
 	_, exists = os.LookupEnv("REPORT_INTERVAL")
-	if exists && envVariables.reportInterval != 0 {
-		config.ReportInterval = envVariables.reportInterval
+	if exists && envVariables.ReportInterval != 0 {
+		config.ReportInterval = envVariables.ReportInterval
 	}
 
 	_, exists = os.LookupEnv("POLL_INTERVAL")
-	if exists && envVariables.pollInterval != 0 {
-		config.PollInterval = envVariables.pollInterval
+	if exists && envVariables.PollInterval != 0 {
+		config.PollInterval = envVariables.PollInterval
 	}
 
 	_, exists = os.LookupEnv("KEY")
 	if exists {
-		config.Key = envVariables.key
+		config.Key = envVariables.Key
 	}
 
 	_, exists = os.LookupEnv("RATE_LIMIT")
-	if exists && envVariables.rateLimit != 0 {
-		config.RateLimit = envVariables.rateLimit
+	if exists && envVariables.RateLimit != 0 {
+		config.RateLimit = envVariables.RateLimit
+	}
+
+	_, exists = os.LookupEnv("CRYPTO_KEY")
+	if exists && envVariables.CryptoKey != "" {
+		config.CryptoKey = envVariables.CryptoKey
 	}
 
 	return &config
