@@ -1,8 +1,14 @@
 package main
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	profilermiddleware "github.com/go-chi/chi/v5/middleware"
@@ -95,8 +101,37 @@ func main() {
 	// Profiler
 	r.Mount("/debug", profilermiddleware.Profiler())
 
-	err := http.ListenAndServe(config.ServerAddress, r)
-	if err != nil {
-		zap.L().Fatal("Failed to start server", zap.Error(err))
+	server := &http.Server{
+		Addr:    config.ServerAddress,
+		Handler: r,
 	}
+
+	// Channel for signals
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGTERM, syscall.SIGINT, syscall.SIGQUIT)
+
+	// Start server in separate goroutine
+	go func() {
+		zap.L().Info("Starting server", zap.String("address", config.ServerAddress))
+
+		err := server.ListenAndServe()
+		if err != nil && !errors.Is(err, http.ErrServerClosed) {
+			zap.L().Fatal("Server failed to start", zap.Error(err))
+		}
+	}()
+
+	// Waiting for signal
+	sig := <-quit
+	zap.L().Info("Shutting down server...", zap.String("signal", sig.String()))
+
+	// Context with timeout to shut down server
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	err := server.Shutdown(ctx)
+	if err != nil {
+		zap.L().Fatal("Server forced to shutdown", zap.Error(err))
+	}
+
+	zap.L().Info("Server exiting")
 }
