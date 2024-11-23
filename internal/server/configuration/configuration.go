@@ -2,6 +2,7 @@
 package configuration
 
 import (
+	"encoding/json"
 	"flag"
 	"os"
 
@@ -13,25 +14,28 @@ import (
 // Configuration structure to configure server parameters
 type Configuration struct {
 	// ServerAddress Address where the server will be hosted (e.g., "localhost:8080" for localhost on port 8080).
-	ServerAddress string
+	ServerAddress string `json:"server_address"`
 
 	// FileStoragePath path to the file where metrics will be stored on the disk.
-	FileStoragePath string
+	FileStoragePath string `json:"file_storage_path"`
 
 	// DatabaseDsn Data Source Name for the database connection string.
-	DatabaseDsn string
+	DatabaseDsn string `json:"database_dsn"`
 
 	// CryptoKey path to private Key for request decryption
-	CryptoKey string
+	CryptoKey string `json:"crypto_key"`
+
+	// Config path to configuration file
+	Config string `json:"config"`
 
 	// Key for hashing.
-	Key string
+	Key string `json:"key"`
 
 	// StoreInterval interval (in seconds) between saving metrics to file.
-	StoreInterval int
+	StoreInterval int `json:"store_interval"`
 
 	// Restore metrics from file after startup or not.
-	Restore bool
+	Restore bool `json:"restore"`
 }
 
 type envs struct {
@@ -40,6 +44,7 @@ type envs struct {
 	DatabaseDsn     string `env:"DATABASE_DSN"`
 	Key             string `env:"KEY"`
 	CryptoKey       string `env:"CRYPTO_KEY"`
+	Config          string `env:"CONFIG"`
 	StoreInterval   int    `env:"STORE_INTERVAL"`
 	Restore         bool   `env:"RESTORE"`
 }
@@ -51,6 +56,10 @@ func Configure() *Configuration {
 	const defaultStoreInterval = 300
 	const defaultFileStoragePath = "/tmp/metrics-db.json"
 	const defaultRestore = true
+
+	// Flags for config
+	flag.StringVar(&config.Config, "c", "", "Path to configuration file")
+	flag.StringVar(&config.Config, "config", "", "Path to configuration file")
 
 	flag.StringVar(&config.ServerAddress, "a", "localhost:8080", "Server URL")
 	flag.IntVar(&config.StoreInterval, "i", defaultStoreInterval, "Store interval in seconds")
@@ -67,7 +76,19 @@ func Configure() *Configuration {
 		zap.L().Error("Failed to parse environment variables", zap.Error(err))
 	}
 
-	_, exists := os.LookupEnv("ADDRESS")
+	_, exists := os.LookupEnv("CONFIG")
+	if exists && envVariables.Config != "" {
+		config.Config = envVariables.Config
+
+		configFromFile, err := loadConfigFromFile(config.Config)
+		if err != nil {
+			zap.L().Error("Failed to load configuration file", zap.Error(err))
+		} else {
+			config = *configFromFile
+		}
+	}
+
+	_, exists = os.LookupEnv("ADDRESS")
 	if exists && !stringutils.IsEmpty(envVariables.Address) {
 		config.ServerAddress = envVariables.Address
 	}
@@ -103,4 +124,26 @@ func Configure() *Configuration {
 	}
 
 	return &config
+}
+
+// loadConfigFromFile loads configuration from a JSON file
+func loadConfigFromFile(filePath string) (*Configuration, error) {
+	if filePath == "" {
+		return nil, nil
+	}
+
+	file, err := os.Open(filePath)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+
+	var config Configuration
+	decoder := json.NewDecoder(file)
+	err = decoder.Decode(&config)
+	if err != nil {
+		return nil, err
+	}
+
+	return &config, nil
 }
