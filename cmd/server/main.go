@@ -3,9 +3,7 @@ package main
 import (
 	"context"
 	"errors"
-	"fmt"
 	"net/http"
-	"os"
 	"os/signal"
 	"syscall"
 	"time"
@@ -31,12 +29,14 @@ var (
 )
 
 func main() {
-	fmt.Printf("Build version: %s\n", buildVersion)
-	fmt.Printf("Build date: %s\n", buildDate)
-	fmt.Printf("Build commit: %s\n", buildCommit)
+	logger.InitLogger()
+
+	sugar := logger.GetSugaredLogger()
+	sugar.Infof("Build version: %s", buildVersion)
+	sugar.Infof("Build date: %s", buildDate)
+	sugar.Infof("Build commit: %s", buildCommit)
 
 	config := configuration.Configure()
-	logger.InitLogger()
 
 	r := chi.NewRouter()
 
@@ -106,9 +106,8 @@ func main() {
 		Handler: r,
 	}
 
-	// Channel for signals
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, syscall.SIGTERM, syscall.SIGINT, syscall.SIGQUIT)
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT, syscall.SIGQUIT)
+	defer stop()
 
 	// Start server in separate goroutine
 	go func() {
@@ -121,14 +120,14 @@ func main() {
 	}()
 
 	// Waiting for signal
-	sig := <-quit
-	zap.L().Info("Shutting down server...", zap.String("signal", sig.String()))
+	<-ctx.Done()
+	zap.L().Info("Shutting down server...")
 
 	// Context with timeout to shut down server
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	err := server.Shutdown(ctx)
+	err := server.Shutdown(shutdownCtx)
 	if err != nil {
 		zap.L().Fatal("Server forced to shutdown", zap.Error(err))
 	}
