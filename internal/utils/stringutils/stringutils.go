@@ -1,3 +1,4 @@
+// Package stringutils is a package for string utility methods
 package stringutils
 
 import "strings"

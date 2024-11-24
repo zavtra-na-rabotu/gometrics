@@ -1,7 +1,12 @@
 package main
 
 import (
+	"context"
+	"errors"
 	"net/http"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	profilermiddleware "github.com/go-chi/chi/v5/middleware"
@@ -11,16 +16,39 @@ import (
 	v2 "github.com/zavtra-na-rabotu/gometrics/internal/server/handlers/v2"
 	v3 "github.com/zavtra-na-rabotu/gometrics/internal/server/handlers/v3"
 	"github.com/zavtra-na-rabotu/gometrics/internal/server/middleware"
+	"github.com/zavtra-na-rabotu/gometrics/internal/server/security"
 	"github.com/zavtra-na-rabotu/gometrics/internal/server/storage"
 	"github.com/zavtra-na-rabotu/gometrics/internal/utils/stringutils"
 	"go.uber.org/zap"
 )
 
+var (
+	buildVersion = "N/A"
+	buildDate    = "N/A"
+	buildCommit  = "N/A"
+)
+
 func main() {
-	config := configuration.Configure()
 	logger.InitLogger()
 
+	sugar := logger.GetSugaredLogger()
+	sugar.Infof("Build version: %s", buildVersion)
+	sugar.Infof("Build date: %s", buildDate)
+	sugar.Infof("Build commit: %s", buildCommit)
+
+	config := configuration.Configure()
+
 	r := chi.NewRouter()
+
+	if config.CryptoKey != "" {
+		privateKey, err := security.ParsePrivateKey(config.CryptoKey)
+		if err != nil {
+			zap.L().Fatal("Failed to parse crypto key", zap.Error(err))
+		}
+
+		r.Use(middleware.DecryptMiddleware(privateKey))
+	}
+
 	r.Use(middleware.RequestLoggerMiddleware)
 	r.Use(middleware.GzipMiddleware)
 
@@ -73,8 +101,36 @@ func main() {
 	// Profiler
 	r.Mount("/debug", profilermiddleware.Profiler())
 
-	err := http.ListenAndServe(config.ServerAddress, r)
-	if err != nil {
-		zap.L().Fatal("Failed to start server", zap.Error(err))
+	server := &http.Server{
+		Addr:    config.ServerAddress,
+		Handler: r,
 	}
+
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT, syscall.SIGQUIT)
+	defer stop()
+
+	// Start server in separate goroutine
+	go func() {
+		zap.L().Info("Starting server", zap.String("address", config.ServerAddress))
+
+		err := server.ListenAndServe()
+		if err != nil && !errors.Is(err, http.ErrServerClosed) {
+			zap.L().Fatal("Server failed to start", zap.Error(err))
+		}
+	}()
+
+	// Waiting for signal
+	<-ctx.Done()
+	zap.L().Info("Shutting down server...")
+
+	// Context with timeout to shut down server
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	err := server.Shutdown(shutdownCtx)
+	if err != nil {
+		zap.L().Fatal("Server forced to shutdown", zap.Error(err))
+	}
+
+	zap.L().Info("Server exiting")
 }

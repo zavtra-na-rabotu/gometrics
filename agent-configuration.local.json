@@ -1,0 +1,8 @@
+{
+  "server_address": "localhost:8081",
+  "key": "my-secret-key",
+  "crypto_key": "/Users/dmitry/dev/go/gometrics/public_key.pem",
+  "report_interval": 20,
+  "poll_interval": 5,
+  "rate_limit": 10
+}

@@ -3,11 +3,17 @@ package metrics
 import (
 	"bytes"
 	"compress/gzip"
+	"crypto/aes"
+	"crypto/cipher"
 	"crypto/hmac"
+	"crypto/rand"
+	"crypto/rsa"
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"sync"
 	"time"
@@ -24,16 +30,18 @@ type Sender struct {
 	key            string
 	rateLimit      int
 	reportInterval time.Duration
+	publicKey      *rsa.PublicKey
 }
 
 // NewSender sender constructor
-func NewSender(url string, key string, rateLimit int, reportInterval int, collector *Collector) *Sender {
+func NewSender(url string, key string, rateLimit int, reportInterval int, publicKey *rsa.PublicKey, collector *Collector) *Sender {
 	return &Sender{
 		client:         resty.New().SetBaseURL("http://" + url),
 		collector:      collector,
 		key:            key,
 		rateLimit:      rateLimit,
 		reportInterval: time.Duration(reportInterval) * time.Second,
+		publicKey:      publicKey,
 	}
 }
 
@@ -88,6 +96,15 @@ func (sender *Sender) sendMetrics(metrics []model.Metrics) error {
 		return fmt.Errorf("failed to compress metrics: %w", err)
 	}
 
+	var encryptedAESKey string
+	var encryptedData = compressedBody.Bytes()
+	if sender.publicKey != nil {
+		encryptedData, encryptedAESKey, err = encryptRequestBody(compressedBody.Bytes(), sender.publicKey)
+		if err != nil {
+			return fmt.Errorf("failed to encrypt metrics: %w", err)
+		}
+	}
+
 	request := sender.client.R()
 
 	if sender.key != "" {
@@ -98,7 +115,8 @@ func (sender *Sender) sendMetrics(metrics []model.Metrics) error {
 	response, err := request.
 		SetHeader("Content-Encoding", "gzip").
 		SetHeader("Content-Type", "application/json").
-		SetBody(compressedBody.Bytes()).
+		SetHeader("Encrypted-AES-Key", encryptedAESKey).
+		SetBody(encryptedData).
 		Post("/updates/")
 
 	if err != nil {
@@ -108,6 +126,29 @@ func (sender *Sender) sendMetrics(metrics []model.Metrics) error {
 		return fmt.Errorf("failed to send metric, StatusCode: %d", response.StatusCode())
 	}
 	return nil
+}
+
+func encryptRequestBody(body []byte, publicKey *rsa.PublicKey) ([]byte, string, error) {
+	// Generate AES key
+	aesKey := make([]byte, 32)
+	_, err := io.ReadFull(rand.Reader, aesKey)
+	if err != nil {
+		return nil, "", fmt.Errorf("failed to generate AES key: %w", err)
+	}
+
+	// Encrypt data with AES key
+	encryptedData, err := encryptWithAES(body, aesKey)
+	if err != nil {
+		return nil, "", fmt.Errorf("failed to encrypt data with AES: %w", err)
+	}
+
+	// Encrypt AES key with RSA public key
+	encryptedAESKey, err := encryptWithPublicKey(aesKey, publicKey)
+	if err != nil {
+		return nil, "", fmt.Errorf("failed to encrypt AES key: %w", err)
+	}
+
+	return encryptedData, encryptedAESKey, nil
 }
 
 func compressBody(compressedData *bytes.Buffer, jsonData []byte) error {
@@ -123,6 +164,38 @@ func compressBody(compressedData *bytes.Buffer, jsonData []byte) error {
 	}
 
 	return nil
+}
+
+// encryptWithPublicKey encrypts data using RSA public key
+func encryptWithPublicKey(data []byte, publicKey *rsa.PublicKey) (string, error) {
+	encryptedData, err := rsa.EncryptOAEP(sha256.New(), rand.Reader, publicKey, data, nil)
+	if err != nil {
+		return "", fmt.Errorf("encryption failed: %w", err)
+	}
+
+	return base64.StdEncoding.EncodeToString(encryptedData), nil
+}
+
+// encryptWithAES encrypts data using AES-GCM
+func encryptWithAES(data []byte, key []byte) ([]byte, error) {
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create AES cipher: %w", err)
+	}
+
+	nonce := make([]byte, 12)
+	_, err = io.ReadFull(rand.Reader, nonce)
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate nonce: %w", err)
+	}
+
+	aesGCM, err := cipher.NewGCM(block)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create GCM: %w", err)
+	}
+
+	encryptedData := aesGCM.Seal(nonce, nonce, data, nil)
+	return encryptedData, nil
 }
 
 func calculateHash(jsonData []byte, key string) string {
