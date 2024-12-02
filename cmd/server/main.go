@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"net"
 	"net/http"
 	"os/signal"
 	"syscall"
@@ -39,6 +40,15 @@ func main() {
 	config := configuration.Configure()
 
 	r := chi.NewRouter()
+
+	if config.TrustedSubnet != "" {
+		_, ipnet, err := net.ParseCIDR(config.TrustedSubnet)
+		if err != nil {
+			zap.L().Fatal("Failed to parse trusted subnet", zap.Error(err))
+		}
+
+		r.Use(middleware.IPValidation(ipnet))
+	}
 
 	if config.CryptoKey != "" {
 		privateKey, err := security.ParsePrivateKey(config.CryptoKey)
