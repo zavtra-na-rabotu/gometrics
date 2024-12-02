@@ -47,7 +47,7 @@ func main() {
 			zap.L().Fatal("Failed to parse trusted subnet", zap.Error(err))
 		}
 
-		r.Use(middleware.IpValidation(ipnet))
+		r.Use(middleware.IPValidation(ipnet))
 	}
 
 	if config.CryptoKey != "" {

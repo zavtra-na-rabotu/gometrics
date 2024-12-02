@@ -7,7 +7,7 @@ import (
 	"go.uber.org/zap"
 )
 
-func IpValidation(trustedSubnet *net.IPNet) func(http.Handler) http.Handler {
+func IPValidation(trustedSubnet *net.IPNet) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			realIP := r.Header.Get("X-Real-IP")
