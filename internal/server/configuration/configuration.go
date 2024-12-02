@@ -31,6 +31,9 @@ type Configuration struct {
 	// Key for hashing.
 	Key string `json:"key"`
 
+	// TrustedSubnet trusted subnet CIDR
+	TrustedSubnet string `json:"trusted_subnet"`
+
 	// StoreInterval interval (in seconds) between saving metrics to file.
 	StoreInterval int `json:"store_interval"`
 
@@ -45,6 +48,7 @@ type envs struct {
 	Key             string `env:"KEY"`
 	CryptoKey       string `env:"CRYPTO_KEY"`
 	Config          string `env:"CONFIG"`
+	TrustedSubnet   string `env:"TRUSTED_SUBNET"`
 	StoreInterval   int    `env:"STORE_INTERVAL"`
 	Restore         bool   `env:"RESTORE"`
 }
@@ -68,6 +72,7 @@ func Configure() *Configuration {
 	flag.StringVar(&config.DatabaseDsn, "d", "", "Database DSN")
 	flag.StringVar(&config.Key, "k", "", "Key")
 	flag.StringVar(&config.CryptoKey, "crypto-key", "", "Crypto Key")
+	flag.StringVar(&config.TrustedSubnet, "t", "", "Trusted subnet CIDR")
 	flag.Parse()
 
 	var envVariables envs
@@ -121,6 +126,11 @@ func Configure() *Configuration {
 	_, exists = os.LookupEnv("CRYPTO_KEY")
 	if exists && envVariables.CryptoKey != "" {
 		config.CryptoKey = envVariables.CryptoKey
+	}
+
+	_, exists = os.LookupEnv("TRUSTED_SUBNET")
+	if exists && envVariables.TrustedSubnet != "" {
+		config.TrustedSubnet = envVariables.TrustedSubnet
 	}
 
 	return &config

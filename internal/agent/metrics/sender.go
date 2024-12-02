@@ -14,6 +14,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
+	"net"
 	"net/http"
 	"sync"
 	"time"
@@ -31,6 +33,7 @@ type Sender struct {
 	rateLimit      int
 	reportInterval time.Duration
 	publicKey      *rsa.PublicKey
+	localIp        net.IP
 }
 
 // NewSender sender constructor
@@ -42,6 +45,7 @@ func NewSender(url string, key string, rateLimit int, reportInterval int, public
 		rateLimit:      rateLimit,
 		reportInterval: time.Duration(reportInterval) * time.Second,
 		publicKey:      publicKey,
+		localIp:        getLocalIP2(),
 	}
 }
 
@@ -113,6 +117,7 @@ func (sender *Sender) sendMetrics(metrics []model.Metrics) error {
 	}
 
 	response, err := request.
+		SetHeader("X-Real-Ip", sender.localIp.String()).
 		SetHeader("Content-Encoding", "gzip").
 		SetHeader("Content-Type", "application/json").
 		SetHeader("Encrypted-AES-Key", encryptedAESKey).
@@ -202,4 +207,16 @@ func calculateHash(jsonData []byte, key string) string {
 	hash := hmac.New(sha256.New, []byte(key))
 	hash.Write(jsonData)
 	return hex.EncodeToString(hash.Sum(nil))
+}
+
+func getLocalIP2() net.IP {
+	conn, err := net.Dial("udp", "8.8.8.8:80")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer conn.Close()
+
+	localAddress := conn.LocalAddr().(*net.UDPAddr)
+
+	return localAddress.IP
 }
