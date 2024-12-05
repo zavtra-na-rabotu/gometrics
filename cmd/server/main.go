@@ -73,21 +73,21 @@ func main() {
 	}
 
 	// Configure trusted ipnet
-	var trustedIpNet *net.IPNet
+	var trustedIPNet *net.IPNet
 	if config.TrustedSubnet != "" {
 		_, ipnet, err := net.ParseCIDR(config.TrustedSubnet)
 		if err != nil {
 			zap.L().Fatal("Failed to parse trusted subnet", zap.Error(err))
 		}
 
-		trustedIpNet = ipnet
+		trustedIPNet = ipnet
 	}
 
 	if config.GRPCEnabled && config.GRPCPort >= 1024 && config.GRPCPort <= 65535 {
-		startGRPC(config, storageToUse, trustedIpNet)
+		startGRPC(config, storageToUse, trustedIPNet)
 	} else {
 		zap.L().Info("gRPC disabled or port is wrong, fallback to HTTP", zap.Bool("grpc_enabled", config.GRPCEnabled), zap.Int("grpc_port", config.GRPCPort))
-		startHTTP(config, storageToUse, trustedIpNet)
+		startHTTP(config, storageToUse, trustedIPNet)
 	}
 }
 
