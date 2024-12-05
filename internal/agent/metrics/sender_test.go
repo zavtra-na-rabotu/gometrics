@@ -77,7 +77,7 @@ func TestSender_SendMetrics(t *testing.T) {
 	defer server.Close()
 
 	client := resty.New().SetBaseURL(server.URL)
-	sender := &Sender{client: client, key: hashKey}
+	sender := &Client{client: client, key: hashKey}
 
 	err = sender.sendMetrics(metrics)
 	assert.NoError(t, err)

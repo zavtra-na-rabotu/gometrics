@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net"
 	"net/http"
 	"os/signal"
@@ -12,15 +13,19 @@ import (
 	"github.com/go-chi/chi/v5"
 	profilermiddleware "github.com/go-chi/chi/v5/middleware"
 	"github.com/zavtra-na-rabotu/gometrics/internal/logger"
+	"github.com/zavtra-na-rabotu/gometrics/internal/pb"
 	"github.com/zavtra-na-rabotu/gometrics/internal/server/configuration"
-	v1 "github.com/zavtra-na-rabotu/gometrics/internal/server/handlers/v1"
-	v2 "github.com/zavtra-na-rabotu/gometrics/internal/server/handlers/v2"
-	v3 "github.com/zavtra-na-rabotu/gometrics/internal/server/handlers/v3"
+	grpcv1 "github.com/zavtra-na-rabotu/gometrics/internal/server/handlers/grpc/v1"
+	"github.com/zavtra-na-rabotu/gometrics/internal/server/handlers/http/v1"
+	"github.com/zavtra-na-rabotu/gometrics/internal/server/handlers/http/v2"
+	"github.com/zavtra-na-rabotu/gometrics/internal/server/handlers/http/v3"
+	"github.com/zavtra-na-rabotu/gometrics/internal/server/interceptor"
 	"github.com/zavtra-na-rabotu/gometrics/internal/server/middleware"
 	"github.com/zavtra-na-rabotu/gometrics/internal/server/security"
 	"github.com/zavtra-na-rabotu/gometrics/internal/server/storage"
 	"github.com/zavtra-na-rabotu/gometrics/internal/utils/stringutils"
 	"go.uber.org/zap"
+	"google.golang.org/grpc"
 )
 
 var (
@@ -39,36 +44,8 @@ func main() {
 
 	config := configuration.Configure()
 
-	r := chi.NewRouter()
-
-	if config.TrustedSubnet != "" {
-		_, ipnet, err := net.ParseCIDR(config.TrustedSubnet)
-		if err != nil {
-			zap.L().Fatal("Failed to parse trusted subnet", zap.Error(err))
-		}
-
-		r.Use(middleware.IPValidation(ipnet))
-	}
-
-	if config.CryptoKey != "" {
-		privateKey, err := security.ParsePrivateKey(config.CryptoKey)
-		if err != nil {
-			zap.L().Fatal("Failed to parse crypto key", zap.Error(err))
-		}
-
-		r.Use(middleware.DecryptMiddleware(privateKey))
-	}
-
-	r.Use(middleware.RequestLoggerMiddleware)
-	r.Use(middleware.GzipMiddleware)
-
-	if config.Key != "" {
-		r.Use(middleware.RequestHashMiddleware(config.Key))
-		r.Use(middleware.ResponseHashMiddleware(config.Key))
-	}
-
+	// Configure storage
 	var storageToUse storage.Storage
-
 	if !stringutils.IsEmpty(config.DatabaseDsn) {
 		zap.L().Info("Using database storage")
 
@@ -95,18 +72,61 @@ func main() {
 		}
 	}
 
+	// Configure trusted ipnet
+	var trustedIpNet *net.IPNet
+	if config.TrustedSubnet != "" {
+		_, ipnet, err := net.ParseCIDR(config.TrustedSubnet)
+		if err != nil {
+			zap.L().Fatal("Failed to parse trusted subnet", zap.Error(err))
+		}
+
+		trustedIpNet = ipnet
+	}
+
+	if config.GRPCEnabled && config.GRPCPort >= 1024 && config.GRPCPort <= 65535 {
+		startGRPC(config, storageToUse, trustedIpNet)
+	} else {
+		zap.L().Info("gRPC disabled or port is wrong, fallback to HTTP", zap.Bool("grpc_enabled", config.GRPCEnabled), zap.Int("grpc_port", config.GRPCPort))
+		startHTTP(config, storageToUse, trustedIpNet)
+	}
+}
+
+func startHTTP(config *configuration.Configuration, storage storage.Storage, ipnet *net.IPNet) {
+	r := chi.NewRouter()
+
+	if ipnet != nil {
+		r.Use(middleware.IPValidation(ipnet))
+	}
+
+	if config.CryptoKey != "" {
+		privateKey, err := security.ParsePrivateKey(config.CryptoKey)
+		if err != nil {
+			zap.L().Fatal("Failed to parse crypto key", zap.Error(err))
+		}
+
+		r.Use(middleware.DecryptMiddleware(privateKey))
+	}
+
+	r.Use(middleware.RequestLoggerMiddleware)
+	r.Use(middleware.GzipMiddleware)
+
+	if config.Key != "" {
+		r.Use(middleware.RequestHashMiddleware(config.Key))
+		r.Use(middleware.ResponseHashMiddleware(config.Key))
+	}
+
 	// API v1
-	r.Post("/update/{type}/{name}/{value}", v1.UpdateMetric(storageToUse))
-	r.Get("/value/{type}/{name}", v1.GetMetric(storageToUse))
-	r.Get("/", v1.RenderAllMetrics(storageToUse))
+	r.Post("/update/{type}/{name}/{value}", v1.UpdateMetric(storage))
+	r.Get("/value/{type}/{name}", v1.GetMetric(storage))
+	r.Get("/", v1.RenderAllMetrics(storage))
 
 	// API v2
-	r.Post("/update/", v2.UpdateMetric(storageToUse))
-	r.Post("/value/", v2.GetMetric(storageToUse))
+	r.Post("/update/", v2.UpdateMetric(storage))
+	r.Post("/value/", v2.GetMetric(storage))
 
 	// API v3
-	r.Get("/ping", v3.Ping(storageToUse))
-	r.Post("/updates/", v3.UpdateMetrics(storageToUse))
+	r.Get("/ping", v3.Ping(storage))
+	r.Post("/updates/", v3.UpdateMetrics(storage))
 
 	// Profiler
 	r.Mount("/debug", profilermiddleware.Profiler())
@@ -121,17 +141,17 @@ func main() {
 
 	// Start server in separate goroutine
 	go func() {
-		zap.L().Info("Starting server", zap.String("address", config.ServerAddress))
+		zap.L().Info("Starting HTTP server", zap.String("address", config.ServerAddress))
 
 		err := server.ListenAndServe()
 		if err != nil && !errors.Is(err, http.ErrServerClosed) {
-			zap.L().Fatal("Server failed to start", zap.Error(err))
+			zap.L().Fatal("HTTP Server failed to start", zap.Error(err))
 		}
 	}()
 
 	// Waiting for signal
 	<-ctx.Done()
-	zap.L().Info("Shutting down server...")
+	zap.L().Info("Shutting down HTTP server...")
 
 	// Context with timeout to shut down server
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -139,8 +159,45 @@ func main() {
 
 	err := server.Shutdown(shutdownCtx)
 	if err != nil {
-		zap.L().Fatal("Server forced to shutdown", zap.Error(err))
+		zap.L().Fatal("HTTP Server forced to shutdown", zap.Error(err))
 	}
 
 	zap.L().Info("Server exiting")
+}
+
+func startGRPC(config *configuration.Configuration, storage storage.Storage, ipnet *net.IPNet) {
+	listen, err := net.Listen("tcp", fmt.Sprintf(":%d", config.GRPCPort))
+	if err != nil {
+		zap.L().Fatal("Failed to listen", zap.Error(err))
+	}
+
+	// Add needed server interceptors
+	var interceptors []grpc.UnaryServerInterceptor
+
+	if ipnet != nil {
+		interceptors = append(interceptors, interceptor.IPValidationInterceptor(ipnet))
+	}
+
+	if config.Key != "" {
+		interceptors = append(interceptors, interceptor.HashInterceptor(config.Key))
+	}
+
+	gRPCServer := grpc.NewServer(grpc.ChainUnaryInterceptor(interceptors...))
+	pb.RegisterMetricsServiceServer(gRPCServer, grpcv1.NewServer(storage))
+
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT, syscall.SIGQUIT)
+	defer stop()
+
+	// Start gRPC server in separate goroutine
+	go func() {
+		zap.L().Info("gRPC server started", zap.Int("port", config.GRPCPort))
+		if err := gRPCServer.Serve(listen); err != nil {
+			zap.L().Fatal("Failed to serve", zap.Error(err))
+		}
+	}()
+
+	// Waiting for signal
+	<-ctx.Done()
+	zap.L().Info("Shutting down gRPC server...")
+	gRPCServer.GracefulStop()
 }

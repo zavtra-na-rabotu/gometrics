@@ -32,6 +32,9 @@ type Configuration struct {
 
 	// RateLimit limit outgoing requests with metrics
 	RateLimit int `json:"rate_limit"`
+
+	// GRPCEnabled to enable GRPc instead of HTTP
+	GRPCEnabled bool `json:"grpc_enabled"`
 }
 
 type envs struct {
@@ -42,6 +45,7 @@ type envs struct {
 	ReportInterval int    `env:"REPORT_INTERVAL"`
 	PollInterval   int    `env:"POLL_INTERVAL"`
 	RateLimit      int    `env:"RATE_LIMIT"`
+	GRPCEnabled    bool   `env:"GRPC_ENABLED"`
 }
 
 // Configure read env variables and CLI parameters to configure server
@@ -61,6 +65,7 @@ func Configure() *Configuration {
 	flag.StringVar(&config.Key, "k", "", "Key")
 	flag.IntVar(&config.RateLimit, "l", 1, "Rate limit")
 	flag.StringVar(&config.CryptoKey, "crypto-key", "", "Crypto Key")
+	flag.BoolVar(&config.GRPCEnabled, "g", false, "GRPC enabled")
 	flag.Parse()
 
 	var envVariables envs
@@ -109,6 +114,11 @@ func Configure() *Configuration {
 	_, exists = os.LookupEnv("CRYPTO_KEY")
 	if exists && envVariables.CryptoKey != "" {
 		config.CryptoKey = envVariables.CryptoKey
+	}
+
+	_, exists = os.LookupEnv("GRPC_ENABLED")
+	if exists {
+		config.GRPCEnabled = envVariables.GRPCEnabled
 	}
 
 	return &config
