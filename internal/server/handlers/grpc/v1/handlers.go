@@ -2,6 +2,7 @@ package v1
 
 import (
 	"context"
+	"encoding/json"
 
 	"github.com/zavtra-na-rabotu/gometrics/internal/model"
 	"github.com/zavtra-na-rabotu/gometrics/internal/pb"
@@ -22,14 +23,12 @@ func NewServer(st storage.Storage) *Server {
 
 // UpdateMetrics handler to update batch of metrics
 func (s *Server) UpdateMetrics(ctx context.Context, req *pb.UpdateMetricsRequest) (*pb.UpdateMetricsResponse, error) {
-	metrics := make([]model.Metrics, len(req.Metrics))
-	for i, m := range req.Metrics {
-		metrics[i] = model.Metrics{
-			ID:    m.Id,
-			MType: mapProtobufTypeToString(m.Type),
-			Value: optionalFloat64(m.Value),
-			Delta: optionalInt64(m.Delta),
-		}
+	var metrics []model.Metrics
+
+	err := json.Unmarshal(req.Data, &metrics)
+	if err != nil {
+		zap.L().Error("Error unmarshalling data", zap.Error(err))
+		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
 	if err := s.storage.UpdateMetrics(metrics); err != nil {
@@ -41,28 +40,4 @@ func (s *Server) UpdateMetrics(ctx context.Context, req *pb.UpdateMetricsRequest
 		Status:  "ok",
 		Message: "Metrics updated successfully",
 	}, nil
-}
-
-// optionalFloat64 converts *float64 from Protobuf to nil or value
-func optionalFloat64(value *float64) *float64 {
-	if value != nil {
-		return value
-	}
-	return nil
-}
-
-// optionalInt64 converts *int64 from Protobuf to nil or value
-func optionalInt64(value *int64) *int64 {
-	if value != nil {
-		return value
-	}
-	return nil
-}
-
-// mapProtobufTypeToString converts Enum to string
-func mapProtobufTypeToString(t pb.Metrics_Type) string {
-	if t == pb.Metrics_COUNTER {
-		return "counter"
-	}
-	return "gauge"
 }

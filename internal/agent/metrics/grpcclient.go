@@ -1,7 +1,11 @@
 package metrics
 
 import (
+	"bytes"
 	"context"
+	"crypto/rsa"
+	"encoding/json"
+	"fmt"
 	"net"
 	"time"
 
@@ -10,7 +14,6 @@ import (
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
-	"google.golang.org/grpc/encoding/gzip"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/protobuf/proto"
 )
@@ -18,20 +21,17 @@ import (
 type GRPCClient struct {
 	serverAddress string
 	key           string
+	publicKey     *rsa.PublicKey
 	localIP       net.IP
 }
 
-func NewGRPCClient(serverAddress string, key string) *GRPCClient {
-	return &GRPCClient{serverAddress, key, GetLocalIP()}
+func NewGRPCClient(serverAddress string, key string, publicKey *rsa.PublicKey) *GRPCClient {
+	return &GRPCClient{serverAddress, key, publicKey, getLocalIP()}
 }
 
 // SendMetrics gRPC sender implementation
 func (grpcClient *GRPCClient) SendMetrics(metrics []model.Metrics) error {
-	connection, err := grpc.NewClient(
-		grpcClient.serverAddress,
-		grpc.WithTransportCredentials(insecure.NewCredentials()),
-		grpc.WithDefaultCallOptions(grpc.UseCompressor(gzip.Name)),
-	)
+	connection, err := grpc.NewClient(grpcClient.serverAddress, grpc.WithTransportCredentials(insecure.NewCredentials()))
 
 	if err != nil {
 		zap.L().Error("Error creating client", zap.Error(err))
@@ -41,14 +41,37 @@ func (grpcClient *GRPCClient) SendMetrics(metrics []model.Metrics) error {
 
 	client := pb.NewMetricsServiceClient(connection)
 
+	jsonData, err := json.Marshal(metrics)
+	if err != nil {
+		zap.L().Error("Error marshalling metrics", zap.Error(err))
+		return fmt.Errorf("failed to marshal metrics:  %w", err)
+	}
+
+	var compressedBody bytes.Buffer
+	err = compressBody(&compressedBody, jsonData)
+	if err != nil {
+		return fmt.Errorf("failed to compress metrics: %w", err)
+	}
+
+	var encryptedAESKey string
+	var encryptedData = compressedBody.Bytes()
+	if grpcClient.publicKey != nil {
+		encryptedData, encryptedAESKey, err = encryptRequestBody(compressedBody.Bytes(), grpcClient.publicKey)
+		if err != nil {
+			return fmt.Errorf("failed to encrypt metrics: %w", err)
+		}
+	}
+
 	// Create request
 	request := &pb.UpdateMetricsRequest{
-		Metrics: mapModelMetricsToPb(metrics),
+		Data: encryptedData,
 	}
 
 	// Create metadata
 	md := metadata.New(map[string]string{
-		"X-Real-IP": grpcClient.localIP.String(),
+		"X-Real-IP":         grpcClient.localIP.String(),
+		"Encrypted-AES-Key": encryptedAESKey,
+		"Content-Encoding":  "gzip",
 	})
 
 	// If key exist - calculate hash and append to metadata
@@ -59,7 +82,7 @@ func (grpcClient *GRPCClient) SendMetrics(metrics []model.Metrics) error {
 			return err
 		}
 
-		var hash = CalculateHash(requestBytes, grpcClient.key)
+		var hash = calculateHash(requestBytes, grpcClient.key)
 		md.Append("HashSHA256", hash)
 	}
 
@@ -76,39 +99,5 @@ func (grpcClient *GRPCClient) SendMetrics(metrics []model.Metrics) error {
 
 	zap.L().Info("Successfully updated metrics", zap.Reflect("response", response))
 
-	return nil
-}
-
-func mapModelMetricsToPb(metrics []model.Metrics) []*pb.Metrics {
-	result := make([]*pb.Metrics, len(metrics))
-	for i, m := range metrics {
-		result[i] = &pb.Metrics{
-			Id:    m.ID,
-			Type:  mapProtobufTypeToString(m.MType),
-			Value: float64PointerToPb(m.Value),
-			Delta: int64PointerToPb(m.Delta),
-		}
-	}
-	return result
-}
-
-func mapProtobufTypeToString(t string) pb.Metrics_Type {
-	if t == "counter" {
-		return pb.Metrics_COUNTER
-	}
-	return pb.Metrics_GAUGE
-}
-
-func float64PointerToPb(value *float64) *float64 {
-	if value != nil {
-		return value
-	}
-	return nil
-}
-
-func int64PointerToPb(delta *int64) *int64 {
-	if delta != nil {
-		return delta
-	}
 	return nil
 }

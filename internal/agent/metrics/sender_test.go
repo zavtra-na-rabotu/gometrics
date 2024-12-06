@@ -46,7 +46,7 @@ func TestSender_SendMetrics(t *testing.T) {
 	jsonData, err := json.Marshal(metrics)
 	assert.NoError(t, err)
 
-	expectedHash := CalculateHash(jsonData, hashKey)
+	expectedHash := calculateHash(jsonData, hashKey)
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "gzip", r.Header.Get("Content-Encoding"))
@@ -91,7 +91,7 @@ func TestSender_CalculateHash(t *testing.T) {
 	expectedHash.Write(data)
 
 	expected := hex.EncodeToString(expectedHash.Sum(nil))
-	actual := CalculateHash(data, key)
+	actual := calculateHash(data, key)
 
 	assert.Equal(t, expected, actual)
 }

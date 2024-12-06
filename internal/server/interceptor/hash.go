@@ -20,14 +20,14 @@ func HashInterceptor(key string) grpc.UnaryServerInterceptor {
 		md, ok := metadata.FromIncomingContext(ctx)
 		if !ok {
 			zap.L().Error("Metadata is missing in the request")
-			return nil, status.Errorf(codes.PermissionDenied, "Metadata is missing")
+			return nil, status.Errorf(codes.InvalidArgument, "Metadata is missing")
 		}
 
 		// Read the incoming hash from metadata
 		receivedHashes := md.Get("HashSHA256")
 		if len(receivedHashes) == 0 {
 			zap.L().Error("HashSHA256 metadata is missing")
-			return nil, status.Errorf(codes.PermissionDenied, "HashSHA256 metadata is missing")
+			return nil, status.Errorf(codes.InvalidArgument, "HashSHA256 metadata is missing")
 		}
 
 		receivedHash := receivedHashes[0]

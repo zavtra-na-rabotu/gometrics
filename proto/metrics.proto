@@ -6,20 +6,8 @@ service MetricsService {
   rpc UpdateMetrics(UpdateMetricsRequest) returns (UpdateMetricsResponse);
 }
 
-message Metrics {
-  optional double value = 1;
-  optional int64 delta = 2;
-  string id = 3;
-
-  enum Type {
-    GAUGE = 0;
-    COUNTER = 1;
-  }
-  Type type = 4;
-}
-
 message UpdateMetricsRequest {
-  repeated Metrics metrics = 1;
+  bytes data = 1;
 }
 
 message UpdateMetricsResponse {

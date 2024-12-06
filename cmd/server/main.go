@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"crypto/rsa"
 	"errors"
 	"fmt"
 	"net"
@@ -84,27 +85,32 @@ func main() {
 		trustedIPNet = ipnet
 	}
 
+	var privateKey *rsa.PrivateKey
+	if config.CryptoKey != "" {
+		parsedPrivateKey, err := security.ParsePrivateKey(config.CryptoKey)
+		if err != nil {
+			zap.L().Fatal("Failed to parse crypto key", zap.Error(err))
+		}
+
+		privateKey = parsedPrivateKey
+	}
+
 	if config.GRPCEnabled && config.GRPCPort >= 1024 && config.GRPCPort <= 65535 {
-		startGRPC(config, storageToUse, trustedIPNet)
+		startGRPC(config, storageToUse, trustedIPNet, privateKey)
 	} else {
 		zap.L().Info("gRPC disabled or port is wrong, fallback to HTTP", zap.Bool("grpc_enabled", config.GRPCEnabled), zap.Int("grpc_port", config.GRPCPort))
-		startHTTP(config, storageToUse, trustedIPNet)
+		startHTTP(config, storageToUse, trustedIPNet, privateKey)
 	}
 }
 
-func startHTTP(config *configuration.Configuration, storage storage.Storage, ipnet *net.IPNet) {
+func startHTTP(config *configuration.Configuration, storage storage.Storage, ipnet *net.IPNet, privateKey *rsa.PrivateKey) {
 	r := chi.NewRouter()
 
 	if ipnet != nil {
 		r.Use(middleware.IPValidation(ipnet))
 	}
 
-	if config.CryptoKey != "" {
-		privateKey, err := security.ParsePrivateKey(config.CryptoKey)
-		if err != nil {
-			zap.L().Fatal("Failed to parse crypto key", zap.Error(err))
-		}
-
+	if privateKey != nil {
 		r.Use(middleware.DecryptMiddleware(privateKey))
 	}
 
@@ -166,7 +172,7 @@ func startHTTP(config *configuration.Configuration, storage storage.Storage, ipn
 	zap.L().Info("Server exiting")
 }
 
-func startGRPC(config *configuration.Configuration, storage storage.Storage, ipnet *net.IPNet) {
+func startGRPC(config *configuration.Configuration, storage storage.Storage, ipnet *net.IPNet, privateKey *rsa.PrivateKey) {
 	listen, err := net.Listen("tcp", fmt.Sprintf(":%d", config.GRPCPort))
 	if err != nil {
 		zap.L().Fatal("Failed to listen", zap.Error(err))
@@ -182,6 +188,12 @@ func startGRPC(config *configuration.Configuration, storage storage.Storage, ipn
 	if config.Key != "" {
 		interceptors = append(interceptors, interceptor.HashInterceptor(config.Key))
 	}
+
+	if privateKey != nil {
+		interceptors = append(interceptors, interceptor.DecryptionInterceptor(privateKey))
+	}
+
+	interceptors = append(interceptors, interceptor.GzipInterceptor())
 
 	gRPCServer := grpc.NewServer(grpc.ChainUnaryInterceptor(interceptors...))
 

@@ -45,7 +45,7 @@ func main() {
 
 	var senderClient metrics.SenderClient
 	if config.GRPCEnabled {
-		senderClient = metrics.NewGRPCClient(config.ServerAddress, config.Key)
+		senderClient = metrics.NewGRPCClient(config.ServerAddress, config.Key, publicKey)
 	} else {
 		senderClient = metrics.NewHTTPClient(config.ServerAddress, config.Key, publicKey)
 	}
