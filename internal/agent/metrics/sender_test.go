@@ -25,12 +25,12 @@ func TestNewSender(t *testing.T) {
 	reportInterval := 5
 
 	collector := &Collector{}
-
-	sender := NewSender(url, key, rateLimit, reportInterval, nil, collector)
+	client := NewHTTPClient(url, key, nil)
+	sender := NewSender(rateLimit, reportInterval, collector, client)
 
 	assert.NotNil(t, sender)
-	assert.Equal(t, "http://"+url, sender.client.BaseURL)
-	assert.Equal(t, key, sender.key)
+	assert.Equal(t, "http://"+url, client.client.BaseURL)
+	assert.Equal(t, key, client.key)
 	assert.Equal(t, rateLimit, sender.rateLimit)
 	assert.Equal(t, time.Duration(reportInterval)*time.Second, sender.reportInterval)
 }
@@ -77,9 +77,9 @@ func TestSender_SendMetrics(t *testing.T) {
 	defer server.Close()
 
 	client := resty.New().SetBaseURL(server.URL)
-	sender := &Sender{client: client, key: hashKey}
+	sender := &HTTPClient{client: client, key: hashKey}
 
-	err = sender.sendMetrics(metrics)
+	err = sender.SendMetrics(metrics)
 	assert.NoError(t, err)
 }
 

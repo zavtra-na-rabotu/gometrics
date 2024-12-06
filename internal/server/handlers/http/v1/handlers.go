@@ -144,7 +144,7 @@ func RenderAllMetrics(st storage.Storage) http.HandlerFunc {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 
 		wd, _ := os.Getwd()
-		metricsTemplate, err := template.ParseFiles(wd + "/internal/server/web/metrics/metrics.tmpl")
+		metricsTemplate, err := template.ParseFiles(wd + "/server/web/metrics/metrics.tmpl")
 		if err != nil {
 			zap.L().Error("Error while parsing template", zap.Error(err))
 			w.WriteHeader(http.StatusInternalServerError)

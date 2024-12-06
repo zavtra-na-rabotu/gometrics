@@ -43,7 +43,14 @@ func main() {
 	go metricsCollector.InitCollector()
 	go metricsCollector.InitPsutilCollector()
 
-	metricsSender := metrics.NewSender(config.ServerAddress, config.Key, config.RateLimit, config.ReportInterval, publicKey, metricsCollector)
+	var senderClient metrics.SenderClient
+	if config.GRPCEnabled {
+		senderClient = metrics.NewGRPCClient(config.ServerAddress, config.Key, publicKey)
+	} else {
+		senderClient = metrics.NewHTTPClient(config.ServerAddress, config.Key, publicKey)
+	}
+
+	metricsSender := metrics.NewSender(config.RateLimit, config.ReportInterval, metricsCollector, senderClient)
 	go metricsSender.InitSender()
 
 	select {}

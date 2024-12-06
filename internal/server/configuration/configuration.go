@@ -31,11 +31,20 @@ type Configuration struct {
 	// Key for hashing.
 	Key string `json:"key"`
 
+	// TrustedSubnet trusted subnet CIDR
+	TrustedSubnet string `json:"trusted_subnet"`
+
 	// StoreInterval interval (in seconds) between saving metrics to file.
 	StoreInterval int `json:"store_interval"`
 
 	// Restore metrics from file after startup or not.
 	Restore bool `json:"restore"`
+
+	// GRPCEnabled to enable GRPc instead of HTTP
+	GRPCEnabled bool `json:"grpc_enabled"`
+
+	// GRPCPort gRPC port to listen
+	GRPCPort int `json:"grpc_port"`
 }
 
 type envs struct {
@@ -45,8 +54,11 @@ type envs struct {
 	Key             string `env:"KEY"`
 	CryptoKey       string `env:"CRYPTO_KEY"`
 	Config          string `env:"CONFIG"`
+	TrustedSubnet   string `env:"TRUSTED_SUBNET"`
 	StoreInterval   int    `env:"STORE_INTERVAL"`
 	Restore         bool   `env:"RESTORE"`
+	GRPCEnabled     bool   `env:"GRPC_ENABLED"`
+	GRPCPort        int    `env:"GRPC_PORT"`
 }
 
 // Configure read env variables and CLI parameters to configure server
@@ -68,6 +80,9 @@ func Configure() *Configuration {
 	flag.StringVar(&config.DatabaseDsn, "d", "", "Database DSN")
 	flag.StringVar(&config.Key, "k", "", "Key")
 	flag.StringVar(&config.CryptoKey, "crypto-key", "", "Crypto Key")
+	flag.StringVar(&config.TrustedSubnet, "t", "", "Trusted subnet CIDR")
+	flag.BoolVar(&config.GRPCEnabled, "g", false, "GRPC enabled")
+	flag.IntVar(&config.GRPCPort, "p", 50051, "GRPC port")
 	flag.Parse()
 
 	var envVariables envs
@@ -121,6 +136,21 @@ func Configure() *Configuration {
 	_, exists = os.LookupEnv("CRYPTO_KEY")
 	if exists && envVariables.CryptoKey != "" {
 		config.CryptoKey = envVariables.CryptoKey
+	}
+
+	_, exists = os.LookupEnv("TRUSTED_SUBNET")
+	if exists && envVariables.TrustedSubnet != "" {
+		config.TrustedSubnet = envVariables.TrustedSubnet
+	}
+
+	_, exists = os.LookupEnv("GRPC_ENABLED")
+	if exists {
+		config.GRPCEnabled = envVariables.GRPCEnabled
+	}
+
+	_, exists = os.LookupEnv("GRPC_PORT")
+	if exists && envVariables.GRPCPort != 0 {
+		config.GRPCPort = envVariables.GRPCPort
 	}
 
 	return &config

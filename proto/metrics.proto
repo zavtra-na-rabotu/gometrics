@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+option go_package = "internal/pb";
+
+service MetricsService {
+  rpc UpdateMetrics(UpdateMetricsRequest) returns (UpdateMetricsResponse);
+}
+
+message UpdateMetricsRequest {
+  bytes data = 1;
+}
+
+message UpdateMetricsResponse {
+  string status = 1;
+  string message = 2;
+}
