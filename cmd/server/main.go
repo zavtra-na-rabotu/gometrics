@@ -26,6 +26,7 @@ import (
 	"github.com/zavtra-na-rabotu/gometrics/internal/utils/stringutils"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
+	_ "google.golang.org/grpc/encoding/gzip"
 )
 
 var (
@@ -183,6 +184,7 @@ func startGRPC(config *configuration.Configuration, storage storage.Storage, ipn
 	}
 
 	gRPCServer := grpc.NewServer(grpc.ChainUnaryInterceptor(interceptors...))
+
 	pb.RegisterMetricsServiceServer(gRPCServer, grpcv1.NewServer(storage))
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT, syscall.SIGQUIT)

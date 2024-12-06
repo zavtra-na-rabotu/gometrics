@@ -10,6 +10,7 @@ import (
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/encoding/gzip"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/protobuf/proto"
 )
@@ -26,7 +27,12 @@ func NewGRPCClient(serverAddress string, key string) *GRPCClient {
 
 // SendMetrics gRPC sender implementation
 func (grpcClient *GRPCClient) SendMetrics(metrics []model.Metrics) error {
-	connection, err := grpc.NewClient(grpcClient.serverAddress, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	connection, err := grpc.NewClient(
+		grpcClient.serverAddress,
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithDefaultCallOptions(grpc.UseCompressor(gzip.Name)),
+	)
+
 	if err != nil {
 		zap.L().Error("Error creating client", zap.Error(err))
 		return err
